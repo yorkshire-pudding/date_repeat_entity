@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ */
+
+
+
+
+/**
+ * Implements hook_entity presave().
+ */
+function date_repeat_entity_insert($entity,$entity_type) {
+    
+  $entities = entity_load($entity_type);
+  //if (count($entities)<15) {
+    $clone = replicate_clone_entity($entity_type, $entity);
+    entity_save($entity_type, $clone);
+  //}
+}

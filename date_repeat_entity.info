@@ -1,0 +1,9 @@
+name = Date Repeat Entity
+description = Manages entities with repeating dates using the Date Repeat API.
+dependencies[] = date_api
+dependencies[] = date
+dependencies[] = date_repeat
+dependencies[] = replicate
+
+package = Date/Time
+core = 7.x
