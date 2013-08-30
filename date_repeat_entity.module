@@ -4,17 +4,46 @@
  * @file
  */
 
-
-
-
 /**
  * Implements hook_entity presave().
  */
-function date_repeat_entity_insert($entity,$entity_type) {
+function date_repeat_entity_presave($entity, $entity_type) {
+  
+  // get entity wrapper
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  // get node type (bundle)
+  $bundle = $wrapper->getBundle();
+  
+  // process event nodes
+  if ($bundle === 'event') {
     
-  $entities = entity_load($entity_type);
-  //if (count($entities)<15) {
-    $clone = replicate_clone_entity($entity_type, $entity);
-    entity_save($entity_type, $clone);
-  //}
+    // get value of clone state - a new event node will have the default state of FALSE
+    // while a cloned event node will have a state of TRUE
+    $field_clone_state = $wrapper->field_clone_state->value();
+
+    // clone the new event node and its attached fields using Replicate API module
+    if ($field_clone_state === FALSE) {
+      $clone = replicate_clone_entity($entity_type, $entity);
+      
+      // get entity wrapper for the cloned node
+      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+      
+      // flag the node as cloned
+      $clone_wrapper->field_clone_state = TRUE;
+      
+      // save the clone
+      entity_save($entity_type, $clone);
+    }
+  }
 }
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $form_id) {
+
+  // hide the clone state from the event edit form 
+  $form['field_clone_state']['#access'] = FALSE;
+}
+
