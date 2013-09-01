@@ -8,32 +8,56 @@
  * Implements hook_entity presave().
  */
 function date_repeat_entity_presave($entity, $entity_type) {
-  
+
   // get entity wrapper
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
 
-  // get node type (bundle)
+  // gec node type (bundle)
   $bundle = $wrapper->getBundle();
-  
+
   // process event nodes
   if ($bundle === 'event') {
-    
-    // get value of clone state - a new event node will have the default state of FALSE
-    // while a cloned event node will have a state of TRUE
-    $field_clone_state = $wrapper->field_clone_state->value();
 
-    // clone the new event node and its attached fields using Replicate API module
-    if ($field_clone_state === FALSE) {
-      $clone = replicate_clone_entity($entity_type, $entity);
+    // determine if this is a new or updated event
+    if ($entity->is_new) {
+
+      // get value of clone state - a new event node will have the default state of FALSE
+      // while a cloned event node will have a state of TRUE
+      $field_clone_state = $wrapper->field_clone_state->value();
+
+      // clone the new event node and its attached fields using Replicate API module
+      if ($field_clone_state === FALSE) {
+        $clone = replicate_clone_entity($entity_type, $entity);
+
+        // get entity wrapper for the cloned node
+        $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+
+        // flag the node as cloned
+        $clone_wrapper->field_clone_state = TRUE;
+
+        // save the clone
+        entity_save($entity_type, $clone);
+      }
+    }
+    else {
       
-      // get entity wrapper for the cloned node
-      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+      // event is being updated
+      // check if date field has changed
+      $new_date = $wrapper->field_date;
       
-      // flag the node as cloned
-      $clone_wrapper->field_clone_state = TRUE;
+      $test = $wrapper->data;
       
-      // save the clone
-      entity_save($entity_type, $clone);
+      $properties = $wrapper->getPropertyInfo();
+      
+      dpm($properties);
+      //$old_date = $wrapper->getBundle()->data->original->field_date;
+      
+      //if ($old_date === $new_date) {
+        //
+        // data has changed
+      //  $test = TRUE;
+      //}
+      
     }
   }
 }
