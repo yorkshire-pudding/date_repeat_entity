@@ -11,53 +11,72 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
   // get entity wrapper
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
+  $id = $wrapper->getIdentifier();
 
-  // gec node type (bundle)
-  $bundle = $wrapper->getBundle();
+  // at the moment we are only considering node entities so we need check
+  // the entity type is node
+  if ($entity_type === 'node') {
 
-  // process event nodes
-  if ($bundle === 'event') {
+    // get node type (bundle)
+    $bundle = $wrapper->getBundle();
 
-    // determine if this is a new or updated event
-    if ($entity->is_new) {
+    // process event nodes
+    if ($bundle === 'event') {
 
-      // get value of clone state - a new event node will have the default state of FALSE
-      // while a cloned event node will have a state of TRUE
-      $field_clone_state = $wrapper->field_clone_state->value();
+      // determine if this is a new or updated event
+      if ($entity->is_new) {
 
-      // clone the new event node and its attached fields using Replicate API module
-      if ($field_clone_state === FALSE) {
-        $clone = replicate_clone_entity($entity_type, $entity);
+        //$fields = field_info_field_map();
+        $fields = field_info_fields();
+        foreach ($fields as $field_name => $field) {
+          if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
+            foreach ($field['bundles'] as $field_entity_type => $bundles) {
+              foreach ($bundles as $field_bundle) {
+                if ($entity_type == $field_entity_type && $bundle == $field_bundle) {
+                  $data = field_get_items($entity_type, $entity, $field_name);
+                }
+              }
+            }
+          }
+        }
 
-        // get entity wrapper for the cloned node
-        $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+        // get value of clone state - a new event node will have the default state of FALSE
+        // while a cloned event node will have a state of TRUE
+        $field_clone_state = $wrapper->field_clone_state->value();
 
-        // flag the node as cloned
-        $clone_wrapper->field_clone_state = TRUE;
+        // clone the new event node and its attached fields using Replicate API module
+        if ($field_clone_state === FALSE) {
+          $clone = replicate_clone_entity($entity_type, $entity);
 
-        // save the clone
-        entity_save($entity_type, $clone);
+          // get entity wrapper for the cloned node
+          $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+
+          // flag the node as cloned
+          $clone_wrapper->field_clone_state = TRUE;
+
+          // save the clone
+          entity_save($entity_type, $clone);
+        }
       }
-    }
-    else {
-      
-      // event is being updated
-      // check if date field has changed
-      $new_date = $wrapper->field_date;
-      
-      $test = $wrapper->data;
-      
-      $properties = $wrapper->getPropertyInfo();
-      
-      dpm($properties);
-      //$old_date = $wrapper->getBundle()->data->original->field_date;
-      
-      //if ($old_date === $new_date) {
-        //
-        // data has changed
-      //  $test = TRUE;
-      //}
-      
+      else {
+
+        // event is being updated
+        // check if date field has changed
+        // get current field date that is being saved
+        $new_date_value_start = $wrapper->field_date[0]->value->value();
+        $new_date_value_end = $wrapper->field_date[0]->value2->value();
+
+        // get field date prior to update
+        $old_entity = entity_load_unchanged($entity_type, $id);
+        $old_wrapper = entity_metadata_wrapper($entity_type, $old_entity);
+        $old_date_value_start = $old_wrapper->field_date[0]->value->value();
+        $old_date_value_end = $old_wrapper->field_date[0]->value2->value();
+
+        // get rrule
+        // note : using EntityDataWrapper to retrieve the string from the
+        // rrule field results in an exception thrown so alternate method
+        // using DateRepeat API is needed
+      }
     }
   }
 }
@@ -67,7 +86,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
  */
 function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $form_id) {
 
-  // hide the clone state from the event edit form 
+  // hide the clone state from the event edit form
   $form['field_clone_state']['#access'] = FALSE;
 }
 

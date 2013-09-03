@@ -7,3 +7,9 @@ dependencies[] = replicate
 
 package = Date/Time
 core = 7.x
+
+; Information added by drush on 2013-08-31
+version = "master-dev"
+project = "date_repeat_entity"
+datestamp = "1378007692"
+
