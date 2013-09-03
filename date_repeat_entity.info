@@ -8,8 +8,10 @@ dependencies[] = replicate
 package = Date/Time
 core = 7.x
 
-; Information added by drush on 2013-08-31
+files[] = tests/date_repeat_entity.test
+
+; Information added by drush on 2013-09-03
 version = "master-dev"
 project = "date_repeat_entity"
-datestamp = "1378007692"
+datestamp = "1378229966"
 
