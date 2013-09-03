@@ -21,24 +21,10 @@ function date_repeat_entity_presave($entity, $entity_type) {
     $bundle = $wrapper->getBundle();
 
     // process event nodes
-    if ($bundle === 'event') {
+    //if ($bundle === 'event') {
 
       // determine if this is a new or updated event
       if ($entity->is_new) {
-
-        //$fields = field_info_field_map();
-        $fields = field_info_fields();
-        foreach ($fields as $field_name => $field) {
-          if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
-            foreach ($field['bundles'] as $field_entity_type => $bundles) {
-              foreach ($bundles as $field_bundle) {
-                if ($entity_type == $field_entity_type && $bundle == $field_bundle) {
-                  $data = field_get_items($entity_type, $entity, $field_name);
-                }
-              }
-            }
-          }
-        }
 
         // get value of clone state - a new event node will have the default state of FALSE
         // while a cloned event node will have a state of TRUE
@@ -46,16 +32,40 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
         // clone the new event node and its attached fields using Replicate API module
         if ($field_clone_state === FALSE) {
-          $clone = replicate_clone_entity($entity_type, $entity);
 
-          // get entity wrapper for the cloned node
-          $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+          //$fields = field_info_field_map();
+          $fields = field_info_fields();
+          foreach ($fields as $field_name => $field) {
+            if (in_array($field['type'], array('date', 'datestamp', 'datetime'))
+                && date_is_repeat_field($field)) {
+              foreach ($field['bundles'] as $field_entity_type => $bundles) {
+                foreach ($bundles as $field_bundle) {
+                  if ($entity_type == $field_entity_type
+                      && $bundle == $field_bundle) {
+                    $field_data = field_get_items($entity_type, $entity, $field_name);
 
-          // flag the node as cloned
-          $clone_wrapper->field_clone_state = TRUE;
+                    // clone a new node for each date in series
+                    foreach ($field_data as $datum) {
 
-          // save the clone
-          entity_save($entity_type, $clone);
+                      $clone = replicate_clone_entity($entity_type, $entity);
+
+                      // get entity wrapper for the cloned node
+                      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+
+                      // flag the node as cloned
+                      $clone_wrapper->field_clone_state = TRUE;
+
+                      // update the entities instance field values or store
+                      // start and end date of each instance in separate fields
+
+                      // save the clone
+                      entity_save($entity_type, $clone);
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
       else {
@@ -77,7 +87,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
         // rrule field results in an exception thrown so alternate method
         // using DateRepeat API is needed
       }
-    }
+    //}
   }
 }
 
