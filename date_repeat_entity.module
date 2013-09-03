@@ -33,46 +33,63 @@ function date_repeat_entity_presave($entity, $entity_type) {
         // while a cloned event node will have a state of TRUE
         $field_clone_state = $wrapper->field_clone_state->value();
 
-        // clone the new event node and its attached fields using Replicate API module
+        // clone the new entity and its attached fields using Replicate API module
         if ($field_clone_state === FALSE) {
 
-          //$fields = field_info_field_map();
+          // get the UUID from the master (original) date
+          $master_uuid = $wrapper->uuid->value();
+
+          // assign the UUID to the master UUID field
+          // give the original entity a reference to its own UUID
+          // - will be needed for any updates of the recurring date series
+          $wrapper->field_master_uuid = $master_uuid;
+
+
           $fields = field_info_fields();
           foreach ($fields as $field_name => $field) {
-            if (in_array($field['type'], array('date', 'datestamp', 'datetime'))
-                && date_is_repeat_field($field)) {
+            if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
               foreach ($field['bundles'] as $field_entity_type => $bundles) {
                 foreach ($bundles as $field_bundle) {
-                  if ($entity_type == $field_entity_type
-                      && $bundle == $field_bundle) {
-                    
+                  if ($entity_type == $field_entity_type && $bundle == $field_bundle) {
+
                     // get an array of field data for the current entity
                     $field_data = field_get_items($entity_type, $entity, $field_name);
 
                     // remove the first item in the array since it is the original (master) entity
                     array_shift($field_data);
-                    
+
                     // clone a new entity for each date in series
                     foreach ($field_data as $datum) {
 
                       // clone entity
-                      $clone = replicate_clone_entity($entity_type, $entity);
+                      $clone_entity = replicate_clone_entity($entity_type, $entity);
 
                       // get entity wrapper for the cloned node
-                      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone);
+                      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
 
                       // flag the node as cloned
                       $clone_wrapper->field_clone_state = TRUE;
-                      
+
                       // amend the title to indicate it has been cloned
-                      // *** remove in production code *** 
-                      $clone_wrapper->title = $wrapper->label() . " clone " . $datum['value'];
+                      // e.g. add the start datetime of the date instance to the title
+                      // TODO *** remove in production code ***
+                      $clone_start_time = $datum['value'];
+                      $clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
+
+                      // give the cloned entity a reference to the master UUID
+                      $clone_wrapper->field_master_uuid = $master_uuid;
+
+                      // reset the UUID, version UUID and version log string
+                      // of the cloned entity to differentiate from the 
+                      // original entity
+                      $clone_entity->uuid = null;
+                      $clone_entity->vuuid = null;
+                      $clone_entity->log = "cloned from uuid : " . $master_uuid;
 
                       // update the entities instance field values or store
                       // start and end date of each instance in separate fields
-
-                      // save the clone
-                      entity_save($entity_type, $clone);
+                      // save the cloned entity
+                      entity_save($entity_type, $clone_entity);
                     }
                   }
                 }
@@ -99,6 +116,27 @@ function date_repeat_entity_presave($entity, $entity_type) {
         // note : using EntityDataWrapper to retrieve the string from the
         // rrule field results in an exception thrown so alternate method
         // using DateRepeat API is needed
+
+        $recurrence_pattern_changed = true;
+
+        $date_entity_update_constraints = "all";
+        //$date_entity_update_constraints = "current-and-future-dates";
+        //$date_entity_update_constraints = "current-date-only";
+
+        switch ($date_entity_update_constraints) {
+          case "all-dates" :
+            // process all dates
+            break;
+          case "current-and-future-dates" :
+            // process current and future dates
+            break;
+          case "current-date-only" :
+            // process current date only
+            break;
+          default :
+          // throw exception since every user response should satisfy one
+          // of the above three constraints
+        }
       }
     }
   }
@@ -106,10 +144,48 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
 /**
  * Implements hook_form_FORM_ID_alter().
+ * 
+ * Assumes an event bundle of entity type node, a field_clone_state and a
+ * field_master_uuid all exist
  */
 function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $form_id) {
 
   // hide the clone state from the event edit form
   $form['field_clone_state']['#access'] = FALSE;
+
+  // hide the master UUID from the event edit form
+  $form['field_master_uuid']['#access'] = FALSE;
 }
 
+/**
+ * Process all dates associated with a repeating date series.
+ */
+function _process_all_dates() {
+  // use EFQ to update all dates with the same field_master_uuid value
+  // keep the UUIDs but update the field_date multivalue fields for each
+  // entity in the series
+}
+
+/**
+ * Process current and future dates associated with a repeating date series.
+ */
+function _process_current_and_future_dates() {
+  // use EFQ to update all dates with the same field_master_uuid value
+  // and any dates that are later than $entity
+  // since this entity and all future ones are eing changed it is assumed that
+  // they are forming a new series (per Google and TeamSnap implementations)
+  // and so new UUID will be required for this date and then the field_master_uuid
+  // and the field_date multivalue fields will have to be updated as well for
+  // each entity in the series
+}
+
+/**
+ * Process current date only from a repeating date series.
+ */
+function _process_current_date_only() {
+  // use EFQ to update all dates with the same field_master_uuid value
+  // - this may not be necessary as there are no other dates besides the
+  // however, since this is being changed it is assumed that it is becoming
+  // an exception to the current series and will have to be added to the
+  // exceptions rule in RRULE field
+}
