@@ -72,7 +72,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
                       // amend the title to indicate it has been cloned
                       // e.g. add the start datetime of the date instance to the title
-                      // TODO *** remove in production code ***
+                      // TODO *** remove next line in production code ***
                       $clone_start_time = $datum['value'];
                       $clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
 
@@ -84,6 +84,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
                       // original entity
                       $clone_entity->uuid = null;
                       $clone_entity->vuuid = null;
+                      // TODO *** remove next line in production code ***
                       $clone_entity->log = "cloned from uuid : " . $master_uuid;
 
                       // update the entities instance field values or store
