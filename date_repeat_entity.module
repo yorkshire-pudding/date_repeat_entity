@@ -106,9 +106,25 @@ function date_repeat_entity_presave($entity, $entity_type) {
         }
         else {
 
+          // remove all items from the entity's field array except the first
+          array_splice($entity->field_date[$entity->language], 1);
+
           // event is being updated
-          // check if date field has changed
-          // get current field date that is being saved
+          // 
+          // check if certain properties and fields have changed that require
+          // an update of related entities within repeating date pattern.
+          // 
+          // These field include:
+          // 
+          // - title
+          // - field_date value (start date)
+          // - field_date value2 (end date)
+          // - field_date rrule (recurrence rule)
+          // 
+          // get title property
+          $new_title = $wrapper->label();
+
+          // get field data for newly updated entity
           $new_date_value_start = $wrapper->field_date[0]->value->value();
           $new_date_value_end = $wrapper->field_date[0]->value2->value();
 
@@ -118,9 +134,11 @@ function date_repeat_entity_presave($entity, $entity_type) {
           // using $entity is needed
           $new_rrule = $entity->field_date[$entity->language][0]['rrule'];
 
-          // get field date prior to update
+          // get field data for original entity
           $old_entity = entity_load_unchanged($entity_type, $entity_id);
           $old_wrapper = entity_metadata_wrapper($entity_type, $old_entity);
+
+          $old_title = $old_wrapper->label();
           $old_date_value_start = $old_wrapper->field_date[0]->value->value();
           $old_date_value_end = $old_wrapper->field_date[0]->value2->value();
 
@@ -132,10 +150,10 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
           // check if the entity date has changed to the extent that updates
           // to other date instances in the series are required
-          $new_date_data = array($new_date_value_start,
+          $new_date_data = array($new_title, $new_date_value_start,
             $new_date_value_end,
             $new_rrule);
-          $old_date_data = array($old_date_value_start,
+          $old_date_data = array($old_title, $old_date_value_start,
             $old_date_value_end,
             $old_rrule);
 
@@ -174,7 +192,8 @@ function date_repeat_entity_presave($entity, $entity_type) {
   }
 
   // reset the flag for clone state, just before saving the entity
-  $clone_wrapper->field_clone_state = FALSE;
+  $entity->field_clone_state = FALSE;
+  //$wrapper->field_clone_state->set(FALSE);//value() = FALSE
 }
 
 /**
@@ -206,8 +225,10 @@ function _process_all_dates($entity, $entity_id, $entity_type = 'node', $bundle 
   $query->entityCondition('entity_type', $entity_type)
       ->entityCondition('bundle', $bundle)
       // note: exclude current entity
-      ->entityCondition('entity_id', array($entity_id), 'NOT IN')
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=');
+      //->entityCondition('entity_id', array($entity_id), 'NOT IN')
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=')
+      // sort by start date
+      ->fieldOrderBy('field_date', 'value', 'ASC');
 
   // retrieve matching entities
   $result = $query->execute();
@@ -221,8 +242,9 @@ function _process_all_dates($entity, $entity_id, $entity_type = 'node', $bundle 
     // retrieve start date for current entity since this is being applied
     // to all dates by the user
     $start_date = $entity->field_date[$entity->language][0]['value'];
+    $end_date = $entity->field_date[$entity->language][0]['value2'];
 
-    // retrieve dates
+    // retrieve dates - note: date_repeat_calc returns sorted dates
     // TODO: account for exceptions and additions as well as timezone
     $new_dates = date_repeat_calc($rrule, $start_date, null);
 
@@ -248,21 +270,59 @@ function _process_all_dates($entity, $entity_id, $entity_type = 'node', $bundle 
     // recurrence pattern.  After changes are applied to all instances, they 
     // remain part of the original recurrence pattern.
 
-    foreach ($date_entities as $date_entity) {
+    $updated_entity_values = array();
+    
+    // dummy iterator because $date_entities keys are entity_ids
+    // and $new_dates keys are numeric indices
+    $counter= 0; 
+    
+    foreach ($date_entities as $delta=>$date_entity) {
+
+      // get the start and end date for this date_entity based on its
+      // position in $new_dates array.
+      $date_entity_start_date = $new_dates[$counter];
       
-      $date_entity->title = $entity->title;
+      // TODO
+      $date_entity_end_date = $date_entity_start_date;// + offset ?
+      
+      // check if $date_entity (the $delta key is the entity_id) matches
+      // the entity passed to this routine.
+      if ($delta == $entity_id) {
+        // the current $date_entity matches the one that was passed to this 
+        // routine so we need to avoid updating it in the middle of a save
+        // operation.  Instead save the new values in an array that is returned
+        // to the calling function.
+        $updated_entity_values[] = array('start_date'=>$date_entity_start_date);
+        // TODO - fix derivation of $date_entity_end_date (see above)
+        $updated_entity_values[] = array('end_date'=>$date_entity_end_date);
+        $updated_entity_values[] = array('rrule'=>$rrule);
+      }
+      else {
+        $date_entity->title = $entity->title;
 
-      // set the RRULE field value
-      $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
+        // set the RRULE field value
+        $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
+        
+        // set the start date
+        $date_entity->field_date[$entity->language][0]['value'] = $date_entity_start_date;
+        
+        // set the end date
+        // TODO - fix derivation of $date_entity_end_date (see above)
+        $date_entity->field_date[$entity->language][0]['value2'] = $date_entity_end_date;
 
-      // set clone state to TRUE so the cloning procedures are skipped
-      // when hook_entity_presave is triggered
-      $date_entity->field_clone_state = TRUE;
+        // set clone state to TRUE so the cloning procedures are skipped
+        // when hook_entity_presave is triggered
+        $date_entity->field_clone_state = TRUE;
 
-      // save the entity
-      entity_save($entity_type, $date_entity);
+        // save the entity
+        entity_save($entity_type, $date_entity);
+        
+        // increment counter
+        $counter++;
+      }
     }
   }
+  return $updated_entity_values;
 }
 
 /**
