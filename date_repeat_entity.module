@@ -249,9 +249,8 @@ function _process_all_dates($entity, $entity_id, $entity_type = 'node', $bundle 
     // remain part of the original recurrence pattern.
 
     foreach ($date_entities as $date_entity) {
-
-      // set the RRULE field value
-      $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
+      
+      $date_entity->title = $entity->title;
 
       // set the RRULE field value
       $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
