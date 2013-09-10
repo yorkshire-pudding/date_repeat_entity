@@ -113,7 +113,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
                     // require an update of related entities within repeating
                     // date pattern.
                     //
-                    // These field include:
+                    // These fields include:
                     //
                     // - title
                     // - field_date value (start date)
