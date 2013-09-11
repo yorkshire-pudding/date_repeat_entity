@@ -13,7 +13,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
   $entity_id = $wrapper->getIdentifier();
-  $bundle = $wrapper->getBundle();
+  $bundle_type = $wrapper->getBundle();
 
   // Check that the entity is of type "node" and bundle of type event
   // We have to do this because we are dependent on field_clone_date and
@@ -23,7 +23,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
     // Process event nodes - ideally we should be able to work on bundles
     // any time but the field_clone_state is part of the event bundle so
     // we need to test for the 'event' bundle type.
-    if ($bundle === 'event') {
+    if ($bundle_type === 'event') {
 
       // Get value of clone state - a new event node will have the default state
       // of FALSE while a cloned event node will have a state of TRUE.
@@ -41,152 +41,177 @@ function date_repeat_entity_presave($entity, $entity_type) {
         // This will be needed for any updates of the recurring date series.
         $wrapper->field_master_uuid = $master_uuid;
 
-        $fields = field_info_fields();
-        foreach ($fields as $field_name => $field) {
-          if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
-            foreach ($field['bundles'] as $field_entity_type => $bundles) {
-              foreach ($bundles as $field_bundle) {
-                if ($entity_type == $field_entity_type && $bundle == $field_bundle) {
+        // If the current entity contains a repeating date field then
+        // we need to process the entity.
+        $field = get_repeating_date_field_name($entity_type, $bundle_type);
 
-                  // Determine if this is a new or updated event.
-                  if ($entity->is_new) {
+        if ($field != NULL) {
+          // If this is a new event, create a clone of the entity for
+          // each date instance in the series (except the first, which
+          // will be saved at the end of this routine.
+          if ($entity->is_new) {
 
-                    // Get an array of field data for the current entity.
-                    $field_data = field_get_items($entity_type, $entity, $field_name);
+            // Get an array of field data for the current entity.
+            $field_name = $field['field_name'];
+            $field_data = field_get_items($entity_type, $entity, $field_name);
 
-                    // Create a new set of dates by removing the first item in
-                    // the array - since it is the original (master) entity.
-                    array_shift($field_data);
+            // Create a new set of dates by removing the first item in
+            // the array - since it is the original (master) entity.
+            array_shift($field_data);
 
-                    // Clone a new entity for each date in series
-                    // (except original entity).
-                    foreach ($field_data as $delta => $datum) {
+            // Clone a new entity for each date in series
+            // (except original entity).
+            foreach ($field_data as $delta => $datum) {
 
-                      // Clone entity.
-                      $clone_entity = replicate_clone_entity($entity_type, $entity);
+              // Clone entity.
+              $clone_entity = replicate_clone_entity($entity_type, $entity);
 
-                      // Get entity wrapper for the cloned node.
-                      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
+              // Get entity wrapper for the cloned node.
+              $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
 
-                      // Flag the node as cloned.
-                      $clone_wrapper->field_clone_state = TRUE;
+              // Flag the node as cloned.
+              $clone_wrapper->field_clone_state = TRUE;
 
-                      // Amend the title to indicate it has been cloned
-                      // e.g. add the start datetime of the date instance to the
-                      // title.
-                      // TODO *** remove in production code ***
-                      $clone_start_time = $datum['value'];
-                      $clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
+              // Amend the title to indicate it has been cloned
+              // e.g. add the start datetime of the date instance to the
+              // title.
+              // TODO *** remove in production code ***
+              $clone_start_time = $datum['value'];
+              $clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
 
-                      // Give the cloned entity a reference to the master UUID.
-                      $clone_wrapper->field_master_uuid = $master_uuid;
+              // Give the cloned entity a reference to the master UUID.
+              $clone_wrapper->field_master_uuid = $master_uuid;
 
-                      // Reset the UUID, version UUID and version log string
-                      // of the cloned entity to differentiate from the
-                      // original entity.
-                      $clone_entity->uuid = NULL;
-                      $clone_entity->vuuid = NULL;
-                      $clone_entity->log = "cloned from uuid : " . $master_uuid;
+              // Reset the UUID, version UUID and version log string
+              // of the cloned entity to differentiate from the
+              // original entity.
+              $clone_entity->uuid = NULL;
+              $clone_entity->vuuid = NULL;
+              $clone_entity->log = "cloned from uuid : " . $master_uuid;
 
-                      // Replace field array with the row that matches the
-                      // current delta.  Need to add an offset of 1 to delta
-                      // because delta values are shifted when we applied
-                      // array_shift to field_data.
-                      $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
+              // Replace field array with the row that matches the
+              // current delta.  Need to add an offset of 1 to delta
+              // because delta values are shifted when we applied
+              // array_shift to field_data.
+              $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
 
-                      // Save the cloned entity.
-                      entity_save($entity_type, $clone_entity);
-                    }
-                    // Remove all items from the master entity's field array
-                    // except the first.
-                    array_splice($entity->field_date[$entity->language], 1);
-                  }
-                  else {
+              // Save the cloned entity.
+              entity_save($entity_type, $clone_entity);
+            }
+            // Remove all items from the master entity's field array
+            // except the first.
+            array_splice($entity->field_date[$entity->language], 1);
+          }
+          // If this an existing event that is being updated, update each
+          // instance in the series as required.
+          else {
 
-                    // Remove all items from the entity's field array except the
-                    // first.
-                    array_splice($entity->field_date[$entity->language], 1);
+            // Remove all items from the entity's field array except the
+            // first.
+            array_splice($entity->field_date[$entity->language], 1);
 
-                    // Event is being updated.
-                    //
-                    // Check if certain properties and fields have changed that
-                    // require an update of related entities within repeating
-                    // date pattern.
-                    //
-                    // These fields include:
-                    //
-                    // - title
-                    // - field_date value (start date)
-                    // - field_date value2 (end date)
-                    // - field_date rrule (recurrence rule)
-                    //
-                    // Get title property.
-                    $new_title = $wrapper->label();
+            /*
+             * Check if certain properties and fields have changed that
+             * require an update of related entities within repeating
+             * date pattern.  These fields include:
+             *
+             * - title
+             * - field_repeat_start_date (start date of the series)
+             * - field_date value (start date)
+             * - field_date value2 (end date)
+             * - field_date rrule (recurrence rule)
+             */
 
-                    // Get field data for newly updated entity.
-                    $new_date_value_start = $wrapper->field_date[0]->value->value();
-                    $new_date_value_end = $wrapper->field_date[0]->value2->value();
+            // Get title property.
+            $new_title = $wrapper->label();
 
-                    // Get rrule.
-                    // Note : using EntityDataWrapper to retrieve the string
-                    // from the rrule field results in an exception thrown so
-                    // alternate method using $entity is needed.
-                    $new_rrule = $entity->field_date[$entity->language][0]['rrule'];
+            // Get date that repeating date series begins.
+            $new_repeat_start_date = $wrapper->field_repeat_start_date->value();
+            
+            // Get field data for newly updated entity.
+            $new_date_value_start = $wrapper->field_date[0]->value->value();
+            $new_date_value_end = $wrapper->field_date[0]->value2->value();
+            //$new_date_timezone =  $wrapper->field_date[0]->timezone->value();
 
-                    // Get field data for original entity.
-                    $old_entity = entity_load_unchanged($entity_type, $entity_id);
-                    $old_wrapper = entity_metadata_wrapper($entity_type, $old_entity);
+            // Get rrule.
+            // Note : using EntityDataWrapper to retrieve the string
+            // from the rrule field results in an exception thrown so
+            // alternate method using $entity is needed.
+            $new_rrule = $entity->field_date[$entity->language][0]['rrule'];
 
-                    $old_title = $old_wrapper->label();
-                    $old_date_value_start = $old_wrapper->field_date[0]->value->value();
-                    $old_date_value_end = $old_wrapper->field_date[0]->value2->value();
+            // Get field data for original entity.
+            $old_entity = entity_load_unchanged($entity_type, $entity_id);
+            $old_wrapper = entity_metadata_wrapper($entity_type, $old_entity);
 
-                    // Get rrule.
-                    // Note : using EntityDataWrapper to retrieve the string
-                    // from the rrule field results in an exception thrown so
-                    // alternate method using $entity is needed.
-                    $old_rrule = $old_entity->field_date[$old_entity->language][0]['rrule'];
+            $old_title = $old_wrapper->label();
+            $old_repeat_start_date = $old_wrapper->field_repeat_start_date->value();
+            $old_date_value_start = $old_wrapper->field_date[0]->value->value();
+            $old_date_value_end = $old_wrapper->field_date[0]->value2->value();
 
-                    // Check if the entity date has changed to the extent that
-                    // updates to other date instances in the series are
-                    // required.
-                    $new_date_data = array($new_title, $new_date_value_start,
-                      $new_date_value_end,
-                      $new_rrule);
-                    $old_date_data = array($old_title, $old_date_value_start,
-                      $old_date_value_end,
-                      $old_rrule);
+            // Get rrule.
+            // Note : using EntityDataWrapper to retrieve the string
+            // from the rrule field results in an exception thrown so
+            // alternate method using $entity is needed.
+            $old_rrule = $old_entity->field_date[$old_entity->language][0]['rrule'];
 
-                    // Conservatively assume that the date _has_ changed.
-                    $entity_date_changed = TRUE;
-                    if ($new_date_data == $old_date_data) {
-                      $entity_date_changed = FALSE;
-                    }
-                    if ($entity_date_changed) {
-                      $date_entity_update_constraints = $wrapper->field_change_repeat_scope->value();
-                      $master_uuid = $wrapper->field_master_uuid->value();
-                      switch ($date_entity_update_constraints) {
-                        case "All":
-                          // Process all dates.
-                          _process_all_dates($entity, $entity_id, $entity_type, $bundle, $master_uuid);
-                          break;
+            // Check if the entity date has changed to the extent that
+            // updates to other date instances in the series are
+            // required.
+            $new_date_data = array($new_title, 
+              $new_repeat_start_date,
+              $new_date_value_start,
+              $new_date_value_end,
+              $new_rrule);
+            $old_date_data = array($old_title,
+              $old_repeat_start_date,
+              $old_date_value_start,
+              $old_date_value_end,
+              $old_rrule);
 
-                        case "Future":
-                          // Process current and future dates.
-                          break;
+            // Conservatively assume that the date _has_ changed.
+            $entity_date_changed = TRUE;
+            if ($new_date_data == $old_date_data) {
+              $entity_date_changed = FALSE;
+            }
+            if ($entity_date_changed) {
+              
+              /*
+               * Determine extent to which changes are required.
+               * 
+               * If $new_date_start_date
+               * 
+               */
+              
+              // Get timezone associated with the field instance. 
+              $timezone = date_get_timezone($field['settings']['tz_handling']);
+               
+               $item = array('value' => $new_date_value_start,
+                             'value2' => $new_date_value_end,
+                             'timezone' => $timezone);
 
-                        case "Single":
-                          // Process current date only.
-                          _process_current_date_only($entity, $entity_id, $entity_type, $bundle, $master_uuid);
-                          break;
+              // Get new date series
+              $value = date_repeat_build_dates($new_rrule, NULL, $field, $item);
+              
+              $date_entity_update_constraints = $wrapper->field_change_repeat_scope->value();
+              $master_uuid = $wrapper->field_master_uuid->value();
+              switch ($date_entity_update_constraints) {
+                case "All":
+                  // Process all dates.
+                  _process_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+                  break;
 
-                        default:
-                          // Throw exception since every user response should
-                          // satisfy one of the above three constraints.
-                      }
-                    }
-                  }
-                }
+                case "Future":
+                  // Process current and future dates.
+                  break;
+
+                case "Single":
+                  // Process current date only.
+                  _process_current_date_only($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+                  break;
+
+                default:
+                  // Throw exception since every user response should
+                  // satisfy one of the above three constraints.
               }
             }
           }
@@ -410,4 +435,50 @@ function _process_current_date_only($entity, $entity_id, $entity_type = 'node', 
       entity_save($entity_type, $date_entity);
     }
   }
+}
+
+/**
+ * Returns the name of a repeating date field, where it exists.
+ * 
+ * Searches database field definition for a repeating date field which is used
+ * in the $entity_type (e.g. node) and $bundle_type (e.g. event) passed as
+ * arguments.
+ * 
+ * Note: Function returns once the first match of a repeating date field
+ * is found and does not consider the scenario where there may be more than
+ * one repeating date field associated with the $entity_type and $bundle_type.
+ */
+function get_repeating_date_field_name($entity_type, $bundle_type) {
+
+  // Set a default value of NULL.
+  $repeating_date_field = NULL;
+
+  // Retrieve meta information about all of the fields in the database.
+  $fields = field_info_fields();
+
+  // Loop through the fields.
+  foreach ($fields as $field_name => $field) {
+
+    // Check if the field is a repeating date field.
+    if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
+
+      // Loop through the entity types associated with this field.
+      foreach ($field['bundles'] as $field_entity_type => $bundles) {
+
+        // Loop through the bundles (content types - in the case of node
+        // entity types) associated with this entity type.
+        foreach ($bundles as $field_bundle) {
+
+          // If the entity type and bundle type passed to this function are the
+          // same as the entity type and bundle of the repeating date field then
+          // we have a match.
+          if ($entity_type == $field_entity_type && $bundle_type == $field_bundle) {
+            $repeating_date_field = $field;
+            return $repeating_date_field;
+          }
+        }
+      }
+    }
+  }
+  return $repeating_date_field;
 }
