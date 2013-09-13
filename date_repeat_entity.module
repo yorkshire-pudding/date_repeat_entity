@@ -181,12 +181,12 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
               /*
                * Determine extent to which changes are required.
-               * 
+               *
                * If $new_date_start_date
-               * 
+               *
                */
 
-              // Get timezone associated with the field instance. 
+              // Get timezone associated with the field instance.
               $timezone = date_get_timezone($field['settings']['tz_handling']);
 
               // Create DateObjects (extensions of PHP DateTime objects)
@@ -199,7 +199,6 @@ function date_repeat_entity_presave($entity, $entity_type) {
               // Create DateObjects from the series start and end dates.
               $new_repeat_date_start = new DateObject($new_repeat_date_start_value, $timezone, date_type_format($field['type']));
 
-
               // Return the time difference (seconds) between:
               // a) the new start date and old start date and
               // b) the new start date and new end date.
@@ -207,30 +206,38 @@ function date_repeat_entity_presave($entity, $entity_type) {
               $seconds_between_new_start_and_new_end_date = $new_date_end->difference($new_date_start);
 
               // Define PHP Interval objects
-              $new_date_start_offset_interval = new DateInterval('PT' . $seconds_between_new_and_old_start_date . 'S');
-              $new_date_end_offset_interval = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
+              $interval_between_new_and_old_start_date = new DateInterval('PT' . $seconds_between_new_and_old_start_date . 'S');
+              $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
+
+              // Get the series master entity
+              $master_uuid = $wrapper->field_master_uuid->value();
+
+              $master_entity = _get_master_entity($entity_type, $bundle_type, $master_uuid);
+
+              $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
+              //$master_date_end_value = $master_entity->field_date[$master_entity->language][0]['value2'];
 
               // Apply the offset to the series start date.
               if ($new_date_start > $old_date_start) {
-                $new_repeat_date_start_calculated = $new_repeat_date_start->add($new_date_start_offset_interval);
+                $new_repeat_date_start_calculated = $master_date_start_value->add($interval_between_new_and_old_start_date);
               }
               else {
-                $new_repeat_date_start_calculated = $new_repeat_date_start->sub($new_date_start_offset_interval);
+                $new_repeat_date_start_calculated = $master_date_start_value->sub($interval_between_new_and_old_start_date);
               }
-              
-              // Apply the offset to the series end date.
+
+              // Apply the interval between the new start date and the new end date to the first date in the series.
               if ($new_date_end > $old_date_end) {
-                $new_repeat_date_end_calculated = $new_repeat_date_start->add($new_date_end_offset_interval);
+                $new_repeat_date_end_calculated = $master_date_end_value->add($interval_between_new_start_and_new_end_date);
               }
               else {
-                $new_repeat_date_end_calculated = $new_repeat_date_start->sub($new_date_end_offset_interval);
-              }              
-              
+                $new_repeat_date_end_calculated = $master_date_end_value->sub($interval_between_new_start_and_new_end_date);
+              }
+
               // Get formatted string representing new series start date and
               // end date.
               $new_repeat_date_start_calculated_value = date_format($new_repeat_date_start_calculated, date_type_format($field['type']));
               $new_repeat_date_end_calculated_value = date_format($new_repeat_date_end_calculated, date_type_format($field['type']));
-              
+
               // Create an item array to simulate the field instance structure
               // used in Date module's Form API functions.
               $item = array('value' => $new_repeat_date_start_calculated_value,
@@ -241,7 +248,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
               $new_dates = date_repeat_build_dates($new_rrule, NULL, $field, $item);
 
               $date_entity_update_constraints = $wrapper->field_change_repeat_scope->value();
-              $master_uuid = $wrapper->field_master_uuid->value();
+
               switch ($date_entity_update_constraints) {
                 case "All":
                   // Process all dates.
@@ -283,7 +290,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
 /**
  * Implements hook_form_FORM_ID_alter().
- * 
+ *
  * Assumes an event bundle of entity type node, a field_clone_state and a
  * field_master_uuid all exist.
  */
@@ -494,12 +501,48 @@ function _process_current_date_only($entity, $entity_id, $entity_type = 'node', 
 }
 
 /**
+ * Returns a master entity from a master uuid
+ */
+function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+
+  // Instantiate array to be returned.
+  $master_entity = array();
+
+  // Use EFQ to retrieve master entity.
+  $query = new EntityFieldQuery();
+
+  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  $query->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', $bundle)
+      ->propertyCondition('uuid', $master_uuid);
+
+  // Retrieve matching entities.
+  $result = $query->execute();
+
+  // If query successful, update retrieved entities.
+  if (isset($result[$entity_type])) {
+
+    // Get array of entity ids.
+    $entity_ids = array_keys($result[$entity_type]);
+
+    // Retrieve entities based on entity ids.
+    $master_entities = entity_load($entity_type, $entity_ids);
+
+    // Get first element in array (there should only be one)
+    $master_entity = reset($master_entities);
+  }
+
+  return $master_entity;
+
+}
+
+/**
  * Returns the name of a repeating date field, where it exists.
- * 
+ *
  * Searches database field definition for a repeating date field which is used
  * in the $entity_type (e.g. node) and $bundle_type (e.g. event) passed as
  * arguments.
- * 
+ *
  * Note: Function returns once the first match of a repeating date field
  * is found and does not consider the scenario where there may be more than
  * one repeating date field associated with the $entity_type and $bundle_type.
