@@ -76,8 +76,8 @@ function date_repeat_entity_presave($entity, $entity_type) {
               // e.g. add the start datetime of the date instance to the
               // title.
               // TODO *** remove in production code ***
-              $clone_start_time = $datum['value'];
-              $clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
+              //$clone_start_time = $datum['value'];
+              //$clone_wrapper->title = $wrapper->label() . " clone " . $clone_start_time;
 
               // Give the cloned entity a reference to the master UUID.
               $clone_wrapper->field_master_uuid = $master_uuid;
@@ -127,7 +127,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
             // Get field data for newly updated entity.
             // Note : using EntityDataWrapper to retrieve datetime values
-            // returns integer instead of the format used in datetime column si
+            // returns integer instead of the format used in datetime column so
             // alternate method using $entity is needed.
             $new_date_start_value = $entity->field_date[$entity->language][0]['value'];
             $new_date_end_value = $entity->field_date[$entity->language][0]['value2'];
@@ -146,7 +146,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
             // Get field data for newly updated entity.
             // Note : using EntityDataWrapper to retrieve datetime values
-            // returns integer instead of the format used in datetime column si
+            // returns integer instead of the format used in datetime column so
             // alternate method using $entity is needed.
             $old_date_start_value = $old_entity->field_date[$old_entity->language][0]['value'];
             $old_date_end_value = $old_entity->field_date[$old_entity->language][0]['value2'];
@@ -220,35 +220,42 @@ function date_repeat_entity_presave($entity, $entity_type) {
               
               // Convert master entity start date to a DateObject
               $master_date_start = new DateObject($master_date_start_value, $timezone, date_type_format($field['type']));
+              
+              // Create a master entity end date based on the start date
+              //$master_date_end = new DateObject($master_date_start_value, $timezone, date_type_format($field['type']));
 
               // Apply the calculated interval between the new and old start
               // dates of the current entity to the master entity start date.
               if ($new_date_start > $old_date_start) {
-                $new_master_start_date = $master_date_start->add($interval_between_new_and_old_start_date);
+                $new_master_date_start = $master_date_start->add($interval_between_new_and_old_start_date);
               }
               else {
-                $new_master_start_date = $master_date_start->sub($interval_between_new_and_old_start_date);
+                $new_master_date_start = $master_date_start->sub($interval_between_new_and_old_start_date);
               }
-
+              
+              // Create a new master entity end date based on the adjusted
+              // master start date.
+              $new_master_date_start_clone = clone $new_master_date_start;
+              
               // Apply the calculated interval between the new start and 
-              // new start date of the current entity to the master entity
-              // start date.  This will yield a new master start date.
+              // new end date of the current entity to the new master entity
+              // end date. This will yield a new master end date.
               if ($new_date_end > $old_date_end) {
-                $new_master_end_date = $master_date_start->add($interval_between_new_start_and_new_end_date);
+                $new_master_date_end = $new_master_date_start_clone->add($interval_between_new_start_and_new_end_date);
               }
               else {
-                $new_master_end_date = $master_date_start->sub($interval_between_new_start_and_new_end_date);
+                $new_master_date_end = $new_master_date_start_clone->sub($interval_between_new_start_and_new_end_date);
               }
 
               // Get formatted strings representing new master start date and
               // end date.
-              $new_master_start_date_value = date_format($new_master_start_date, date_type_format($field['type']));
-              $new_master_end_date_value = date_format($new_master_end_date, date_type_format($field['type']));
+              $new_master_date_start_value = date_format($new_master_date_start, date_type_format($field['type']));
+              $new_master_date_end_value = date_format($new_master_date_end, date_type_format($field['type']));
 
               // Create an item array to simulate the field instance structure
               // used in Date module's Form API functions.
-              $item = array('value' => $new_master_start_date_value,
-                            'value2' => $new_master_end_date_value,
+              $item = array('value' => $new_master_date_start_value,
+                            'value2' => $new_master_date_end_value,
                             'timezone' => $timezone);
 
               // Get new date series based on the new master start and end dates
@@ -282,7 +289,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
                 $entity->field_date[$entity->language][0]['value'] = $updated_entity_values['value'];
                 $entity->field_date[$entity->language][0]['value2'] = $updated_entity_values['value2'];
                 $entity->field_date[$entity->language][0]['rrule'] = $updated_entity_values['rrule'];
-                $entity->field_repeat_start_date[$entity->language][0]['value'] = $updated_entity_values['repeat_date_start_value'];
+              //  $entity->field_repeat_start_date[$entity->language][0]['value'] = $updated_entity_values['repeat_date_start_value'];
               }
             }
           }
