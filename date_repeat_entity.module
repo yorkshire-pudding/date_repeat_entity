@@ -197,7 +197,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
               $old_date_end = new DateObject($old_date_end_value, $timezone, date_type_format($field['type']));
 
               // Create DateObjects from the series start and end dates.
-              $new_repeat_date_start = new DateObject($new_repeat_date_start_value, $timezone, date_type_format($field['type']));
+              //$new_repeat_date_start = new DateObject($new_repeat_date_start_value, $timezone, date_type_format($field['type']));
 
               // Return the time difference (seconds) between:
               // a) the new start date and old start date and
@@ -205,46 +205,53 @@ function date_repeat_entity_presave($entity, $entity_type) {
               $seconds_between_new_and_old_start_date = $new_date_start->difference($old_date_start);
               $seconds_between_new_start_and_new_end_date = $new_date_end->difference($new_date_start);
 
-              // Define PHP Interval objects
+              // Define PHP Interval objects.
               $interval_between_new_and_old_start_date = new DateInterval('PT' . $seconds_between_new_and_old_start_date . 'S');
               $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
 
-              // Get the series master entity
+              // Get the series master entity uuid from the current entity.
               $master_uuid = $wrapper->field_master_uuid->value();
 
+              // Get the master entity using the master entity uuid.
               $master_entity = _get_master_entity($entity_type, $bundle_type, $master_uuid);
 
+              // Get the master entity start date value
               $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
-              //$master_date_end_value = $master_entity->field_date[$master_entity->language][0]['value2'];
+              
+              // Convert master entity start date to a DateObject
+              $master_date_start = new DateObject($master_date_start_value, $timezone, date_type_format($field['type']));
 
-              // Apply the offset to the series start date.
+              // Apply the calculated interval between the new and old start
+              // dates of the current entity to the master entity start date.
               if ($new_date_start > $old_date_start) {
-                $new_repeat_date_start_calculated = $master_date_start_value->add($interval_between_new_and_old_start_date);
+                $new_master_start_date = $master_date_start->add($interval_between_new_and_old_start_date);
               }
               else {
-                $new_repeat_date_start_calculated = $master_date_start_value->sub($interval_between_new_and_old_start_date);
+                $new_master_start_date = $master_date_start->sub($interval_between_new_and_old_start_date);
               }
 
-              // Apply the interval between the new start date and the new end date to the first date in the series.
+              // Apply the calculated interval between the new start and 
+              // new start date of the current entity to the master entity
+              // start date.  This will yield a new master start date.
               if ($new_date_end > $old_date_end) {
-                $new_repeat_date_end_calculated = $master_date_end_value->add($interval_between_new_start_and_new_end_date);
+                $new_master_end_date = $master_date_start->add($interval_between_new_start_and_new_end_date);
               }
               else {
-                $new_repeat_date_end_calculated = $master_date_end_value->sub($interval_between_new_start_and_new_end_date);
+                $new_master_end_date = $master_date_start->sub($interval_between_new_start_and_new_end_date);
               }
 
-              // Get formatted string representing new series start date and
+              // Get formatted strings representing new master start date and
               // end date.
-              $new_repeat_date_start_calculated_value = date_format($new_repeat_date_start_calculated, date_type_format($field['type']));
-              $new_repeat_date_end_calculated_value = date_format($new_repeat_date_end_calculated, date_type_format($field['type']));
+              $new_master_start_date_value = date_format($new_master_start_date, date_type_format($field['type']));
+              $new_master_end_date_value = date_format($new_master_end_date, date_type_format($field['type']));
 
               // Create an item array to simulate the field instance structure
               // used in Date module's Form API functions.
-              $item = array('value' => $new_repeat_date_start_calculated_value,
-                'value2' => $new_repeat_date_end_calculated_value,
-                'timezone' => $timezone);
+              $item = array('value' => $new_master_start_date_value,
+                            'value2' => $new_master_end_date_value,
+                            'timezone' => $timezone);
 
-              // Get new date series
+              // Get new date series based on the new master start and end dates
               $new_dates = date_repeat_build_dates($new_rrule, NULL, $field, $item);
 
               $date_entity_update_constraints = $wrapper->field_change_repeat_scope->value();

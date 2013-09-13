@@ -4,6 +4,7 @@ dependencies[] = date_api
 dependencies[] = date
 dependencies[] = date_repeat
 dependencies[] = replicate
+dependencies[] = uuid
 
 package = Date/Time
 core = 7.x
@@ -42,4 +43,11 @@ datestamp = "1378755870"
 version = "master-dev"
 project = "date_repeat_entity"
 datestamp = "1379050179"
+
+
+
+; Information added by drush on 2013-09-13
+version = "master-dev"
+project = "date_repeat_entity"
+datestamp = "1379089888"
 
