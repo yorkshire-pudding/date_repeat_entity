@@ -6,6 +6,22 @@
  */
 
 /**
+ * Implements hook_form_alter().
+ */
+function date_repeat_entity_form_alter(&$form, $form_state, $form_id) {
+  $form['#validate'][] = 'validate_date_repeat_entity';
+  $form['#action'] = url('/');
+  
+}
+
+
+function validate_date_repeat_entity(&$form, &$form_state) {
+
+  $test = $form['type'];
+  
+}
+
+/**
  * Implements hook_entity_presave().
  */
 function date_repeat_entity_presave($entity, $entity_type) {
@@ -275,7 +291,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
                 case "Single":
                   // Process current date only.
-                  _process_current_date_only($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+                  //_process_current_date_only($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
                   break;
 
                 default:
