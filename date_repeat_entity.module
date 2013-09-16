@@ -139,7 +139,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
         // If the current entity contains a repeating date field then
         // we need to process the entity.
-        $field = get_repeating_date_field($entity_type, $bundle_type);
+        $field = _get_repeating_date_field($entity_type, $bundle_type);
 
         if ($field != NULL) {
           // If this is a new event, create a clone of the entity for
@@ -407,6 +407,34 @@ function date_repeat_entity_presave($entity, $entity_type) {
 }
 
 /**
+ * If a deleted entity has a recurring date field, then any instances of the
+ * same recurring date pattern may also need to be deleted, depending upon the
+ * state of the field_change_repeat_scope field i.e the user may wish to 
+ * delete the single instance, all instances in the series or just instances in
+ * the future.
+ * 
+ * Implements hook_entity_delete().
+ */
+function date_repeat_entity_delete($entity, $entity_type) {
+  
+  
+}
+
+/*
+ * Function called when event node is about to be deleted.
+ * 
+ * Checks if the entity:
+ *   a) represents a recurring field and,
+ *   b) if there are entities that reference the entity.
+ */
+function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
+  
+  
+  
+  drupal_set_title('New Title');
+}
+
+/**
  * Process all dates associated with a repeating date series.
  */
 function _process_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
@@ -659,7 +687,7 @@ function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uu
  * @return
  *   A field array. 
  */
-function get_repeating_date_field($entity_type, $bundle_type) {
+function _get_repeating_date_field($entity_type, $bundle_type) {
 
   // Set a default value of NULL.
   $repeating_date_field = NULL;
@@ -707,7 +735,7 @@ function get_repeating_date_field($entity_type, $bundle_type) {
  * @return
  *   A boolean indicating if field is a repeating date field.
  */
-function is_repeating_date_field($fields) {
+function _is_repeating_date_field($fields) {
 
   // Loop through the fields.
   foreach ($fields as $field_name => $field) {
