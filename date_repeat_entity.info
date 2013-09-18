@@ -51,3 +51,10 @@ version = "master-dev"
 project = "date_repeat_entity"
 datestamp = "1379089888"
 
+
+
+; Information added by drush on 2013-09-18
+version = "master-dev"
+project = "date_repeat_entity"
+datestamp = "1379521574"
+

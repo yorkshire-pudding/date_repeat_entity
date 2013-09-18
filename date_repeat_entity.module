@@ -1,3 +1,4 @@
+
 <?php
 
 /**
@@ -29,6 +30,62 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
   }
 }
 
+/*
+ * Alters the node_delete_confirm form
+ * Function called when event node is about to be deleted.
+ * 
+ * Checks if the entity:
+ *   a) represents a recurring field and,
+ *   b) if there are entities that reference the entity.
+ * 
+ * If so, then we need to provide more options for deletion i.e. single instance
+ * current and future dates or all dates.
+ */
+
+function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
+
+  //drupal_set_title('New Title');
+
+  $form['actions']['delete-all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete all instances'),
+    '#submit' => 'my_handler',
+  );
+
+  $form['actions']['submit']['#submit'][] = '_delete_date_instances';
+//  $form['actions']['delete-future'] = array(
+//    '#type' => 'submit',
+//    '#value' => t('Delete current and future instances'),
+//  );
+//    $form['actions']['delete-current'] = array(
+//    '#type' => 'submit',
+//    '#value' => t('Delete only this instance'),
+//  );
+  // if 
+}
+
+function my_handler() {
+
+  $here = 'a test';
+}
+
+
+/**
+ * Custom submit handler called when an entity deleted.
+ * @param type $form
+ * @param type $form_state
+ */
+function _delete_date_instances(&$form, &$form_state) {
+
+  $entity_type = 'node';
+  $bundle = 'event';
+  $entity_id = $form['nid']['#value'];
+  $entity= _get_entity($entity_type, $bundle, $entity_id);
+
+  // Delete series of date instances.
+  _delete_dates($entity, $entity_type);
+}
+
 /**
  * Provides custom validation for entities that have repeating date fields.
  * 
@@ -50,18 +107,18 @@ function date_repeat_entity_validate(&$form, &$form_state) {
 
       $new_date_start_value = $form_state['values']['field_date'][$language][0]['value'];
       $new_date_end_value = $form_state['values']['field_date'][$language][0]['value2'];
-      $new_repeat_date_start_value = $form_state['values']['field_date'][$language][0]['value'];
+      $new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
       $new_rrule = $form_state['values']['field_date'][$language][0]['rrule'];
 
       $entity_type = $form['#entity_type'];
       $entity_id = $form['#entity']->nid;
       $old_entity = entity_load_unchanged($entity_type, $entity_id);
-      
+
       $old_date_start_value = $old_entity->field_date[$old_entity->language][0]['value'];
       $old_date_end_value = $old_entity->field_date[$old_entity->language][0]['value2'];
       $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
       $old_rrule = $old_entity->field_date[$old_entity->language][0]['rrule'];
-      
+
       // Check if the entity date has changed to the extent that
       // the repeating date series has changed and therefore dependent data
       // like date exceptions and referencing entities will need to be reset.
@@ -116,8 +173,15 @@ function date_repeat_entity_presave($entity, $entity_type) {
 
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  // Get entity id.
   $entity_id = $wrapper->getIdentifier();
+
+  // Get bundle type.
   $bundle_type = $wrapper->getBundle();
+
+  // Get the series master UUID.
+  $master_uuid = $wrapper->field_master_uuid->value();
 
   // Check that the entity is of type "node" and bundle of type event
   // We have to do this because we are dependent on field_clone_date and
@@ -314,8 +378,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
               $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
 
               // Get the series master entity uuid from the current entity.
-              $master_uuid = $wrapper->field_master_uuid->value();
-
+              //$master_uuid = $wrapper->field_master_uuid->value();
               // Get the master entity using the master entity uuid.
               $master_entity = _get_master_entity($entity_type, $bundle_type, $master_uuid);
 
@@ -370,7 +433,7 @@ function date_repeat_entity_presave($entity, $entity_type) {
               switch ($change_repeat_scope) {
                 case "All":
                   // Process all dates.
-                  $updated_entity_values = _process_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle_type, $master_uuid);
+                  $updated_entity_values = _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle_type, $master_uuid);
                   break;
 
                 case "Future":
@@ -407,37 +470,72 @@ function date_repeat_entity_presave($entity, $entity_type) {
 }
 
 /**
+ * Implements hook_entity_delete().
+ */
+function date_repeat_entity_delete($entity, $entity_type) {
+
+  // TODO: remove this function if the better approach is to use form submit
+  // handlers - to avoid recursion on hook_entity_delete.
+  // _delete_dates($entity, $entity_type);
+}
+
+/**
+ * Deletes one of more date instances of a entity with a repeating date field.
+ *
  * If a deleted entity has a recurring date field, then any instances of the
  * same recurring date pattern may also need to be deleted, depending upon the
  * state of the field_change_repeat_scope field i.e the user may wish to 
  * delete the single instance, all instances in the series or just instances in
  * the future.
  * 
- * Implements hook_entity_delete().
+ * @param type $entity
+ * @param type $entity_type
  */
-function date_repeat_entity_delete($entity, $entity_type) {
-  
-  
-}
+function _delete_dates($entity, $entity_type) {
 
-/*
- * Function called when event node is about to be deleted.
- * 
- * Checks if the entity:
- *   a) represents a recurring field and,
- *   b) if there are entities that reference the entity.
- */
-function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
-  
-  
-  
-  drupal_set_title('New Title');
+  // Instantiate boolean variable to track success of delete operation.
+  $deleted_dates_successfully = FALSE;
+
+  // Get entity wrapper.
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  // Get entity id.
+  $entity_id = $wrapper->getIdentifier();
+
+  // Get bundle type.
+  $bundle_type = $wrapper->getBundle();
+
+  // Get the series master UUID.
+  $master_uuid = $wrapper->field_master_uuid->value();
+
+  // Process updates based on the scope of changes selected by user. 
+  $change_repeat_scope = $wrapper->field_change_repeat_scope->value();
+
+  switch ($change_repeat_scope) {
+    case "All":
+      // Process all dates.
+      $deleted_dates_successfully = _delete_all_dates($entity_id, $entity_type, $bundle_type, $master_uuid);
+      break;
+
+    case "Future":
+      // Process current and future dates.
+      break;
+
+    case "Single":
+      // Process current date only.
+      //_process_current_date_only($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+      break;
+
+    default:
+    // Throw exception since every user response should
+    // satisfy one of the above three constraints.
+  }
 }
 
 /**
  * Process all dates associated with a repeating date series.
  */
-function _process_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _update_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
   // Instantiate array to be returned.
   $updated_entity_values = array();
@@ -471,7 +569,8 @@ function _process_all_dates($entity, $entity_id, $new_dates, $entity_type = 'nod
     // Retrieve dates - note: date_repeat_calc returns sorted dates.
     // TODO: account for exceptions and additions as well as timezone.
     //$new_dates = date_repeat_calc($rrule, $start_date, NULL);
-    // Build and array of entity ids for for the entity type.
+    //
+    // Build an array of entity ids for for the entity type.
     $date_entity_ids = array_keys($result[$entity_type]);
 
     // Retrieve entities based on entity ids.
@@ -549,7 +648,7 @@ function _process_all_dates($entity, $entity_id, $new_dates, $entity_type = 'nod
 /**
  * Process current and future dates associated with a repeating date series.
  */
-function _process_current_and_future_dates() {
+function _update_current_and_future_dates() {
   // Use EFQ to update all dates with the same field_master_uuid value
   // and any dates that are later than $entity.
   // Since this entity and all future ones are eing changed it is assumed that
@@ -562,7 +661,7 @@ function _process_current_and_future_dates() {
 /**
  * Process current date only from a repeating date series.
  */
-function _process_current_date_only($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _update_current_date_only($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
   // Use EFQ to update all dates with the same field_master_uuid value.
   // This may not be necessary as there are no other dates besides the
   // current entity.  However, since this is being changed it is assumed
@@ -592,7 +691,7 @@ function _process_current_date_only($entity, $entity_id, $entity_type = 'node', 
     // TODO: account for exceptions and additions as well as timezone.
     $new_dates = date_repeat_calc($rrule, $start_date, NULL);
 
-    // Build and array of entity ids for for the entity type.
+    // Build an array of entity ids for for the entity type.
     $date_entity_ids = array_keys($result[$entity_type]);
 
     // Retrieve entities based on entity ids.
@@ -632,6 +731,50 @@ function _process_current_date_only($entity, $entity_id, $entity_type = 'node', 
 }
 
 /**
+ * Delete all dates associated with a repeating date series.
+ * 
+ * @param int $entity_id
+ *   A numeric identifier for an identity 
+ * 
+ * @param text $entity_type
+ *   A entity type e.g. node.
+ * 
+ * @param text $bundle_type
+ *   A bundle type e.g. event.* 
+ */
+function _delete_all_dates($entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+
+  // Instantiate boolean variable to track success of delete operation.
+  $deleted_all_dates_successfully = FALSE;
+
+  // Use EFQ to get all dates with the same field_master_uuid value
+  $query = new EntityFieldQuery();
+
+  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  $query->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', $bundle)
+      // Note: exclude current entity because it will be deleted as part of the
+      // hook_entity_delete function that calls this one.
+      ->entityCondition('uuid', array($master_uuid), 'NOT IN')
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+  
+  // Retrieve matching entities.
+  $result = $query->execute();
+
+  // If query successful, update retrieved entities.
+  if (isset($result[$entity_type])) {
+
+    // Build an array of entity ids for for the entity type.
+    $date_entity_ids = array_keys($result[$entity_type]);
+
+    // Delete an array of entities. Return success as boolean variable.
+    $deleted_all_dates_successfully = entity_delete_multiple($entity_type, $date_entity_ids);
+  }
+
+  return $deleted_all_dates_successfully;
+}
+
+/**
  * Returns a master entity from a master uuid
  */
 function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
@@ -664,6 +807,41 @@ function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uu
   }
 
   return $master_entity;
+}
+
+/**
+ * Returns a master entity from a master uuid
+ */
+function _get_entity($entity_type = 'node', $bundle = 'event', $entity_id = NULL) {
+
+  // Instantiate array to be returned.
+  $entity = array();
+
+  // Use EFQ to retrieve master entity.
+  $query = new EntityFieldQuery();
+
+  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  $query->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', $bundle)
+      ->entityCondition('entity_id', array($entity_id), 'IN');
+
+  // Retrieve matching entities.
+  $result = $query->execute();
+
+  // If query successful, update retrieved entities.
+  if (isset($result[$entity_type])) {
+
+    // Get array of entity ids.
+    $entity_ids = array_keys($result[$entity_type]);
+
+    // Retrieve entities based on entity ids.
+    $entities = entity_load($entity_type, $entity_ids);
+
+    // Get first element in array (there should only be one)
+    $entity = reset($entities);
+  }
+
+  return $entity;
 }
 
 /**
