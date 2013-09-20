@@ -1,10 +1,26 @@
-
 <?php
-
 /**
  * @file
  * Allows repeating date fields to be managed in entities
  */
+
+/**
+ * Implements hook_menu().
+ */
+function date_repeat_entity_menu() {
+  $items = array();
+
+  $items['node/%/date-repeat-entity-confirmation'] = array(
+    'title' => 'Do you want to update entity?',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('date_repeat_entity_form_node_save',1),
+    'access callback' => TRUE,
+    'description' => 'A confirmation form for saving event nodes',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
 
 /**
  * Implements hook_form_FORM_ID_alter().
@@ -28,82 +44,10 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
   if (empty($form['nid']['#value'])) {
     $form['field_change_repeat_scope']['#access'] = FALSE;
   }
-}
-
-/*
- * Alters the node_delete_confirm form
- * Function called when event node is about to be deleted.
- * 
- * Checks if the entity:
- *   a) represents a recurring field and,
- *   b) if there are entities that reference the entity.
- * 
- * If so, then we need to provide more options for deletion i.e. single instance
- * current and future dates or all dates.
- */
-
-function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
-
-  $form['actions']['submit']['#value'] = t('Delete this instance only');
   
-  $form['buttons']['delete-all'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete all instances'),
-    '#submit'=> array_merge( array('delete_all_dates'), $form['#submit']),
-    '#validate' => array(),
-  );
-    
-  $form['buttons']['delete-future'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete current and future instances'),
-    '#submit'=> array_merge( array('delete_future_dates'), $form['#submit']),
-    '#validate' => array(),
-  );
-
-}
-
-/**
- * Custom submit handler called when an entity deleted.
- * @param type $form
- * @param type $form_state
- */
-function delete_all_dates(&$form, &$form_state) {
-
-  $entity_type = 'node';
-  $bundle_type = 'event';
-  $entity_id = $form['nid']['#value'];
-  $entity = _get_entity($entity_type, $bundle_type, $entity_id);
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
-  _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-
-}
-
-/**
- * Custom submit handler called when an entity deleted.
- * @param type $form
- * @param type $form_state
- */
-function delete_future_dates(&$form, &$form_state) {
-
-  $entity_type = 'node';
-  $bundle_type = 'event';
-  $entity_id = $form['nid']['#value'];
-  $entity = _get_entity($entity_type, $bundle_type, $entity_id);
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
-  _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-
+  // Prepend a handler for node save operations
+  $form['actions']['submit']['#submit'] = array_merge( array('date_repeat_entity_node_save'), $form['actions']['submit']['#submit']);
+  
 }
 
 /**
@@ -186,11 +130,102 @@ function date_repeat_entity_validate(&$form, &$form_state) {
   }
 }
 
+/*
+ * Alters the node_delete_confirm form
+ * Function called when event node is about to be deleted.
+ * 
+ * Checks if the entity:
+ *   a) represents a recurring field and,
+ *   b) if there are entities that reference the entity.
+ * 
+ * If so, then we need to provide more options for deletion i.e. single instance
+ * current and future dates or all dates.
+ */
+function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
+
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/utility');
+
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/delete');
+  
+  // Change title of default submit button.
+  $form['actions']['submit']['#value'] = t('Delete this instance only');
+  
+  // Create button that gives user option of deleting all dates associated
+  // with an entity.
+  $form['buttons']['delete-all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete all instances'),
+    '#submit'=> array_merge( array('delete_all_dates'), $form['#submit']),
+    '#validate' => array(),
+  );
+
+  // Create button that gives user option of deleting current and future
+  // dates associated with an entity.  
+  $form['buttons']['delete-future'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete current and future instances'),
+    '#submit'=> array_merge( array('delete_future_dates'), $form['#submit']),
+    '#validate' => array(),
+  );
+}
+
+/**
+ * Node submit handler for entity forms with repeating dates.
+ */
+function date_repeat_entity_node_save(&$form, &$form_state) {
+  
+  // Redirect to a date repeat confirmation page.
+  $entity_id = $form['nid']['#value'];
+  drupal_goto('node/' . $entity_id . '/date-repeat-entity-confirmation');
+}
+
+function date_repeat_entity_form_node_save($form, &$form_state, $arg23) {
+
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/utility');
+
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/update');
+  
+  $form['description'] = array(
+    '#type' => 'item',
+    '#title' => t('Date entity confirmation form'),
+  );
+    
+  // Create button that gives user option of updating all dates associated
+  // with an entity.
+  $form['buttons']['update-all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update all instances'),
+    '#submit'=> array('update_all_dates'),
+    '#validate' => array(),
+  );
+
+  // Create button that gives user option of updating current and future
+  // dates associated with an entity.  
+  $form['buttons']['update-future'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update current and future instances'),
+    '#submit'=> array('update_future_dates'),
+    '#validate' => array(),
+  );
+  
+  return $form;
+}
+
 /**
  * Implements hook_entity_presave().
  */
 function date_repeat_entity_presave($entity, $entity_type) {
 
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/utility');
+
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/update');
+  
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
 
@@ -489,524 +524,3 @@ function date_repeat_entity_presave($entity, $entity_type) {
   $entity->field_clone_state = FALSE;
 }
 
-/**
- * Implements hook_entity_delete().
- */
-function date_repeat_entity_delete($entity, $entity_type) {
-
-  // TODO: remove this function if the better approach is to use form submit
-  // handlers - to avoid recursion on hook_entity_delete.
-  // _delete_dates($entity, $entity_type);
-}
-
-/**
- * Deletes one of more date instances of a entity with a repeating date field.
- *
- * If a deleted entity has a recurring date field, then any instances of the
- * same recurring date pattern may also need to be deleted, depending upon the
- * state of the field_change_repeat_scope field i.e the user may wish to 
- * delete the single instance, all instances in the series or just instances in
- * the future.
- * 
- * @param text $change_repeat_scope
- *   defines whether all dates or just current and future dates are affected.
- * @param entity object $entity
- * @param text $entity_type
- */
-function _delete_dates($change_repeat_scope, $entity, $entity_type) {
-
-  // Instantiate boolean variable to track success of delete operation.
-  $deleted_dates_successfully = FALSE;
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get entity id.
-  $entity_id = $wrapper->getIdentifier();
-
-  // Get bundle type.
-  $bundle_type = $wrapper->getBundle();
-
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
-  switch ($change_repeat_scope) {
-    case "All":
-      // Process all dates.
-      $deleted_dates_successfully = _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-      break;
-
-    case "Future":
-      // Process current and future dates.
-      $deleted_dates_successfully = _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-      break;
-
-    case "Single":
-      // Process current date only.  Should not have to do anything because
-      // form_node_delete_confirm form is already taking care of the the current
-      // instance.
-      break;
-
-    default:
-    // Throw exception since every user response should
-    // satisfy one of the above three constraints.
-  }
-}
-
-/**
- * Process all dates associated with a repeating date series.
- */
-function _update_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
-
-  // Instantiate array to be returned.
-  $updated_entity_values = array();
-
-  // Use EFQ to update all dates with the same field_master_uuid value
-  // keep the UUIDs but update the field_date multivalue fields for each
-  // entity in the series.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      // Note: exclude current entity.
-      // ->entityCondition('entity_id', array($entity_id), 'NOT IN')
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=')
-      // Sort by start date.
-      ->fieldOrderBy('field_date', 'value', 'ASC');
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Retrieve RRULE for current entity.
-    //$rrule = $entity->field_date[$entity->language][0]['rrule'];
-    // Retrieve start date for current entity since this is being applied
-    // to all dates by the user.
-    //$start_date = $entity->field_date[$entity->language][0]['value'];
-    //$end_date = $entity->field_date[$entity->language][0]['value2'];
-    // Retrieve dates - note: date_repeat_calc returns sorted dates.
-    // TODO: account for exceptions and additions as well as timezone.
-    //$new_dates = date_repeat_calc($rrule, $start_date, NULL);
-    //
-    // Build an array of entity ids for for the entity type.
-    $date_entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $date_entities = entity_load($entity_type, $date_entity_ids);
-
-    // Update instances, where necessary...
-    // From the Groupanizer 3 design docs:
-    // Changing all instances will involve updating all instances represented
-    // by the recurrence pattern.  Exceptions need not be updated.
-    // In Google Calendar, if a recurrence pattern’s start date, start time
-    // but not duration apparently) and/or frequency is modified then all the
-    // properties of each exception will be changed to match the recurrence
-    // pattern.  This includes recreation of instances that were previously
-    // deleted exceptions. Google Calendar appears to employ a more subtle
-    // approach i.e. if an instance’s field (title, start date, color etc.)
-    // has been modified (i.e. it differs from that of the recurrence pattern,
-    // then the modified field values will be preserved.  However, if they are
-    // the same as the recurrence pattern then they will be changed to meet the
-    // recurrence pattern.  After changes are applied to all instances, they
-    // remain part of the original recurrence pattern.
-    $updated_entity_values = array();
-
-    // Dummy iterator because $date_entities keys are entity_ids
-    // and $new_dates keys are numeric indices.
-    $counter = 0;
-
-    foreach ($date_entities as $delta => $date_entity) {
-
-      // Get the start, end date and RRULE for this date_entity based on its
-      // position in $new_dates array.
-      $date_entity_start_date = $new_dates[$counter]['value'];
-      $date_entity_end_date = $new_dates[$counter]['value2'];
-      $date_entity_rrule = $new_dates[$counter]['rrule'];
-
-      // Check if $date_entity (the $delta key is the entity_id) matches
-      // the entity passed to this routine.
-      if ($delta == $entity_id) {
-        // The current $date_entity matches the one that was passed to this
-        // routine so we need to avoid updating it in the middle of a save
-        // operation.  Instead save the new values in an array that is returned
-        // to the calling function.
-        $updated_entity_values['value'] = $date_entity_start_date;
-        $updated_entity_values['value2'] = $date_entity_end_date;
-        $updated_entity_values['rrule'] = $date_entity_rrule;
-      }
-      else {
-
-        // Set the entity title.
-        $date_entity->title = $entity->title;
-
-        // Set the start date.
-        $date_entity->field_date[$entity->language][0]['value'] = $date_entity_start_date;
-
-        // Set the end date.
-        $date_entity->field_date[$entity->language][0]['value2'] = $date_entity_end_date;
-
-        // Set the RRULE field value.
-        $date_entity->field_date[$entity->language][0]['rrule'] = $date_entity_rrule;
-
-        // Set clone state to TRUE so the cloning procedures are skipped
-        // when hook_entity_presave is triggered.
-        $date_entity->field_clone_state = TRUE;
-
-        // Save the entity.
-        entity_save($entity_type, $date_entity);
-      }
-
-      // Increment counter.
-      $counter++;
-    }
-  }
-  return $updated_entity_values;
-}
-
-/**
- * Process current and future dates associated with a repeating date series.
- */
-function _update_current_and_future_dates() {
-  // Use EFQ to update all dates with the same field_master_uuid value
-  // and any dates that are later than $entity.
-  // Since this entity and all future ones are eing changed it is assumed that
-  // they are forming a new series (per Google and TeamSnap implementations)
-  // and so new UUID will be required for this date and then the
-  // field_master_uuid and the field_date multivalue fields will have to be
-  // updated as well for each entity in the series.
-}
-
-/**
- * Process current date only from a repeating date series.
- */
-function _update_current_date_only($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
-  // Use EFQ to update all dates with the same field_master_uuid value.
-  // This may not be necessary as there are no other dates besides the
-  // current entity.  However, since this is being changed it is assumed
-  // that it is becoming an exception to the current series and will have
-  // to be added to the exceptions rule in RRULE field for all related entities.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=');
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Retrieve RRULE for current entity.
-    $rrule = $entity->field_date[$entity->language][0]['rrule'];
-
-    // Retrieve start date for current entity since this is being applied
-    // to all dates by the user.
-    $start_date = $entity->field_date[$entity->language][0]['value'];
-
-    // Retrieve dates.
-    // TODO: account for exceptions and additions as well as timezone.
-    $new_dates = date_repeat_calc($rrule, $start_date, NULL);
-
-    // Build an array of entity ids for for the entity type.
-    $date_entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $date_entities = entity_load($entity_type, $date_entity_ids);
-
-    // Update instances, where necessary...
-    // From the Groupanizer 3 design docs:
-    // Changing all instances will involve updating all instances represented
-    // by the recurrence pattern.  Exceptions need not be updated.
-    // In Google Calendar, if a recurrence pattern’s start date, start time
-    // but not duration apparently) and/or frequency is modified then all the
-    // properties of each exception will be changed to match the recurrence
-    // pattern.  This includes recreation of instances that were previously
-    // deleted exceptions. Google Calendar appears to employ a more subtle
-    // approach i.e. if an instance’s field (title, start date, color etc.)
-    // has been modified (i.e. it differs from that of the recurrence pattern,
-    // then the modified field values will be preserved.  However, if they are
-    // the same as the recurrence pattern then they will be changed to meet the
-    // recurrence pattern.  After changes are applied to all instances, they
-    // remain part of the original recurrence pattern.
-    foreach ($date_entities as $date_entity) {
-
-      // Set the RRULE field value.
-      $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
-
-      // Set the RRULE field value.
-      $date_entity->field_date[$entity->language][0]['rrule'] = $rrule;
-
-      // Set clone state to TRUE so the cloning procedures are skipped
-      // when hook_entity_presave is triggered.
-      $date_entity->field_clone_state = TRUE;
-
-      // Save the entity.
-      entity_save($entity_type, $date_entity);
-    }
-  }
-}
-
-/**
- * Delete all dates associated with a repeating date series.
- * 
- * @param int $entity_id
- *   A numeric identifier for an identity 
- * 
- * @param text $entity_type
- *   A entity type e.g. node.
- * 
- * @param text $bundle_type
- *   A bundle type e.g. event.* 
- */
-function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
-
-  // Instantiate boolean variable to track success of delete operation.
-  $deleted_all_dates_successfully = FALSE;
-
-  // Use EFQ to get all dates with the same field_master_uuid value
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      // Note: exclude current entity because it will be deleted as part of the
-      // hook_entity_delete function that calls this one.
-      ->propertyCondition('nid', $entity_id, '<>')
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Build an array of entity ids for for the entity type.
-    $date_entity_ids = array_keys($result[$entity_type]);
-
-    // Delete an array of entities. Returns failure as FALSE, success as NULL.
-    $success = entity_delete_multiple($entity_type, $date_entity_ids);
-    if ($success !== FALSE) {
-      $deleted_all_dates_successfully = TRUE;
-    }
-  }
-
-  return $deleted_all_dates_successfully;
-}
-
-/**
- * Delete future dates associated with a repeating date series.
- * 
- * @param int $entity_id
- *   A numeric identifier for an identity 
- * 
- * @param text $entity_type
- *   A entity type e.g. node.
- * 
- * @param text $bundle_type
- *   A bundle type e.g. event.* 
- */
-function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
-
-  // Get start date value of current date instance.
-  $start_date = $entity->field_date[$entity->language][0]['value'];
-
-  // Instantiate boolean variable to track success of delete operation.
-  $deletedfuture_dates_successfully = FALSE;
-
-  // Use EFQ to get all dates with the same field_master_uuid value
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      // Note: exclude current entity because it will be deleted as part of the
-      // hook_entity_delete function that calls this one.
-      ->propertyCondition('nid', $entity_id, '<>')
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid)
-      ->fieldCondition('field_date', 'value', $start_date, '>');
-
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Build an array of entity ids for for the entity type.
-    $date_entity_ids = array_keys($result[$entity_type]);
-
-    // Delete an array of entities. Returns failure as FALSE, success as NULL.
-    $success = entity_delete_multiple($entity_type, $date_entity_ids);
-    if ($success !== FALSE) {
-      $deletedfuture_dates_successfully = TRUE;
-    }
-  }
-
-  // Need to update RRULE on remaining entities to reflect the fact that some
-  // future dates were truncated and so the effective end date of the series
-  // should be brought forward.
-  // $rrule = date_api_ical_build_rrule($element['#value']);
-
-
-
-
-  return $deletedfuture_dates_successfully;
-}
-
-/**
- * Returns a master entity from a master uuid
- */
-function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
-
-  // Instantiate array to be returned.
-  $master_entity = array();
-
-  // Use EFQ to retrieve master entity.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      ->propertyCondition('uuid', $master_uuid);
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Get array of entity ids.
-    $entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $master_entities = entity_load($entity_type, $entity_ids);
-
-    // Get first element in array (there should only be one)
-    $master_entity = reset($master_entities);
-  }
-
-  return $master_entity;
-}
-
-/**
- * Returns a master entity from a master uuid
- */
-function _get_entity($entity_type = 'node', $bundle = 'event', $entity_id = NULL) {
-
-  // Instantiate array to be returned.
-  $entity = array();
-
-  // Use EFQ to retrieve master entity.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      ->entityCondition('entity_id', array($entity_id), 'IN');
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Get array of entity ids.
-    $entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $entities = entity_load($entity_type, $entity_ids);
-
-    // Get first element in array (there should only be one)
-    $entity = reset($entities);
-  }
-
-  return $entity;
-}
-
-/**
- * Returns the name of a repeating date field, where it exists.
- *
- * Searches database field definition for a repeating date field which is used
- * in the $entity_type (e.g. node) and $bundle_type (e.g. event) passed as
- * arguments.
- *
- * Note: Function returns once the first match of a repeating date field
- * is found and does not consider the scenario where there may be more than
- * one repeating date field associated with the $entity_type and $bundle_type.
- * 
- *
- * @param $entity_type
- *   A entity type e.g. node.
- * 
- * @param $bundle_type
- *   A bundle type e.g. event.
- *
- * @return
- *   A field array. 
- */
-function _get_repeating_date_field($entity_type, $bundle_type) {
-
-  // Set a default value of NULL.
-  $repeating_date_field = NULL;
-
-  // Retrieve meta information about all of the fields in the database.
-  $fields = field_info_fields();
-
-  // Loop through the fields.
-  foreach ($fields as $field_name => $field) {
-
-    // Check if the field is a repeating date field.
-    if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
-
-      // Loop through the entity types associated with this field.
-      foreach ($field['bundles'] as $field_entity_type => $bundles) {
-
-        // Loop through the bundles (content types - in the case of node
-        // entity types) associated with this entity type.
-        foreach ($bundles as $field_bundle) {
-
-          // If the entity type and bundle type passed to this function are the
-          // same as the entity type and bundle of the repeating date field then
-          // we have a match.
-          if ($entity_type == $field_entity_type && $bundle_type == $field_bundle) {
-            $repeating_date_field = $field;
-            return $repeating_date_field;
-          }
-        }
-      }
-    }
-  }
-  return $repeating_date_field;
-}
-
-/**
- * Determines if an array of fields contains a repeating date field.
- *
- * Note: Function returns once the first match of a repeating date field
- * is found and does not consider the scenario where there may be more than
- * one repeating date field.
- *
- * @param $fields
- *   An array of fields.
- *
- * @return
- *   A boolean indicating if field is a repeating date field.
- */
-function _is_repeating_date_field($fields) {
-
-  // Loop through the fields.
-  foreach ($fields as $field_name => $field) {
-
-    // Check if the field is a repeating date field.
-    if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
-      return TRUE;
-    }
-  }
-  // If no repeating date field, return false
-  return FALSE;
-}
