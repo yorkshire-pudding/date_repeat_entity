@@ -199,13 +199,14 @@ function date_repeat_entity_form_node_update_confirm_alter(&$form, &$form_state,
 }
 
 /**
+ * Form constructor for the node save confirmation form
  *
  * @param type $form
  * @param type $form_state
  * @param type $arg23
  * @return array
  */
-function date_repeat_entity_node_save_confirm($form, &$form_state, $nid) {
+function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/utility');
@@ -213,10 +214,16 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $nid) {
   // Make sure repeating date update functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/update');
 
+  $form['#node'] = $node;
+  // Always provide entity id in the same form key as in the entity edit form.
+  $form['nid'] = array('#type' => 'value', '#value' => $node->nid);
+
   $form['description'] = array(
     '#type' => 'item',
     '#title' => t('Date entity confirmation form'),
   );
+
+  $form['uprtydate-all'] = array('#type' => 'hidden', '#value' => 1);
 
   // Create button that gives user option of updating all dates associated
   // with an entity.
@@ -238,6 +245,14 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $nid) {
 
   return $form;
 }
+
+/**
+ *
+ */
+function date_repeat_entity_node_save_confirm_submit($form, &$form_state) {
+  $form_state['redirect'] = '<front>';
+}
+
 
 /**
  * Implements hook_entity_presave().

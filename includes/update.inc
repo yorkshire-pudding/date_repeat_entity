@@ -5,7 +5,7 @@
  */
 
 function update_all_dates(&$form, &$form_state) {
-  
+
   $entity_type = 'node';
   $bundle_type = 'event';
   $entity_id = $form['nid']['#value'];
@@ -18,12 +18,14 @@ function update_all_dates(&$form, &$form_state) {
   $master_uuid = $wrapper->field_master_uuid->value();
 
   // Update all the dates
-  _update_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);  
-  
+  _update_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+
+    $form_state['redirect'] = '<front>';
+
 }
 
 function update_future_dates(&$form, &$form_state) {
-  
+
   $entity_type = 'node';
   $bundle_type = 'event';
   $entity_id = $form['nid']['#value'];
@@ -36,8 +38,10 @@ function update_future_dates(&$form, &$form_state) {
   $master_uuid = $wrapper->field_master_uuid->value();
 
   // Update all the dates
-  _update_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);  
-  
+  _update_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+
+   $form_state['redirect'] = '<front>';
+
 }
 
 /**
