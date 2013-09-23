@@ -29,7 +29,6 @@ function delete_all_dates(&$form, &$form_state) {
   $master_uuid = $wrapper->field_master_uuid->value();
 
   _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-
 }
 
 /**
@@ -55,17 +54,6 @@ function delete_future_dates(&$form, &$form_state) {
   $master_uuid = $wrapper->field_master_uuid->value();
 
   _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-
-}
-
-/**
- * Implements hook_entity_delete().
- */
-function date_repeat_entity_delete($entity, $entity_type) {
-
-  // TODO: remove this function if the better approach is to use form submit
-  // handlers - to avoid recursion on hook_entity_delete.
-  // _delete_dates($entity, $entity_type);
 }
 
 /**
