@@ -9,26 +9,22 @@
  * Implements hook_install().
  */
 function date_repeat_entity_install() {
-  
 }
 
 /**
  * Implements hook_uninstall().
  */
 function date_repeat_entity_uninstall() {
-  
 }
 
 /**
  * Implements hook_enable().
  */
 function date_repeat_entity_enable() {
-  
 }
 
 /**
  * Implements hook_disable().
  */
 function date_repeat_entity_disable() {
-  
 }
