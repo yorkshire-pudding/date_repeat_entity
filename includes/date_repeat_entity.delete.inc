@@ -57,62 +57,6 @@ function delete_future_dates(&$form, &$form_state) {
 }
 
 /**
- * Deletes one of more date instances of a entity with a repeating date field.
- *
- * If a deleted entity has a recurring date field, then any instances of the
- * same recurring date pattern may also need to be deleted, depending upon the
- * state of the field_change_repeat_scope field i.e the user may wish to 
- * delete the single instance, all instances in the series or just instances in
- * the future.
- * 
- * @param text $change_repeat_scope
- *   defines whether all dates or just current and future dates are affected.
- * @param object $entity
- *   The entity object.
- * @param string $entity_type
- *   The entity type e.g. node.
- */
-function _delete_dates($change_repeat_scope, $entity, $entity_type) {
-
-  // Instantiate boolean variable to track success of delete operation.
-  $deleted_dates_successfully = FALSE;
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get entity id.
-  $entity_id = $wrapper->getIdentifier();
-
-  // Get bundle type.
-  $bundle_type = $wrapper->getBundle();
-
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
-  switch ($change_repeat_scope) {
-    case "All":
-      // Process all dates.
-      $deleted_dates_successfully = _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-      break;
-
-    case "Future":
-      // Process current and future dates.
-      $deleted_dates_successfully = _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-      break;
-
-    case "Single":
-      // Process current date only.  Should not have to do anything because
-      // form_node_delete_confirm form is already taking care of the the current
-      // instance.
-      break;
-
-    default:
-      // Throw exception since every user response should
-      // satisfy one of the above three constraints.
-  }
-}
-
-/**
  * Delete all dates associated with a repeating date series.
  * 
  * @param int $entity_id
