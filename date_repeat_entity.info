@@ -11,6 +11,10 @@ core = 7.x
 
 ;files[] = tests/date_repeat_entity.test
 
+; stylesheets
+; TODO: refine application of CSS to only pages that require it
+stylesheets[all][] = date_repeat_entity.css
+
 ; Information added by drush on 2013-09-03
 version = "master-dev"
 project = "date_repeat_entity"

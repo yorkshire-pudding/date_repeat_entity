@@ -11,16 +11,36 @@
 function date_repeat_entity_menu() {
   $items = array();
 
+  // Create routing for the node save confirmation form 
   $items['node/%node/save-confirm'] = array(
     'title' => 'Save Confirmation',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('date_repeat_entity_node_save_confirm', 1),
-    'access callback' => TRUE,
     'description' => 'A confirmation form for saving event nodes',
-    'type' => MENU_CALLBACK,
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
   );
-
+  
   return $items;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function date_repeat_entity_admin_paths() {
+  
+  // If the site is configured to use a different theme for administration
+  // then this hook provides a list of paths where the administration theme
+  // should be used.
+  if (variable_get('node_admin_theme')) {
+    $paths = array(
+      'node/*/save-confirm' => TRUE,
+    );
+    return $paths;
+  }
 }
 
 /**
@@ -55,8 +75,9 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
       // Add hidden field to form
       $form['repeating_date_field'] = array('#type' => 'hidden', '#value' => $repeating_date_field_name);
 
-      // Add custom submit handler
-      $form['actions']['submit']['#submit'][] = 'date_repeat_entity_node_save';
+      // Add custom submit handler - this will replace the exising node save
+      // handler
+      $form['actions']['submit']['#submit'] = array('date_repeat_entity_node_save');
     }
   }
 }
@@ -157,26 +178,45 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
   // Make sure repeating date update functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
 
-  // Change title of default submit button.
-  $form['actions']['submit']['#value'] = t('Delete this instance only');
+  drupal_set_title(t('Delete Recurring Event'), PASS_THROUGH);
 
-  // Create button that gives user option of deleting all dates associated
-  // with an entity.
-  $form['buttons']['delete-all'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete all instances'),
-    '#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
-    '#validate' => array(),
+  $form['description'] = array(
+    '#type' => 'item',
+    '#title' => t('Would you like to delete only this event, all events in the series, or this and all future events in the series?  Deleting this event may affect related attendance information.'),
   );
+  
+  // Change title of default submit button.
+  // Only this instance (all other events in the series will remain).
+  $form['actions']['submit']['#value'] = t('Only this instance');
+  $form['actions']['submit']['#weight'] = 10;
 
   // Create button that gives user option of deleting current and future
   // dates associated with an entity.
-  $form['buttons']['delete-future'] = array(
+  // All following (this and all the following events will be deleted).
+  $form['actions']['delete-future'] = array(
     '#type' => 'submit',
-    '#value' => t('Delete current and future instances'),
+    '#value' => t('All following'),
     '#submit' => array_merge(array('delete_future_dates'), $form['#submit']),
+    '#weight' => 20,
     '#validate' => array(),
   );
+
+  // Create button that gives user option of deleting all dates associated
+  // with an entity.
+  // All events in the series (all events in the series will be deleted).
+  $form['actions']['delete-all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete all events in the series'),
+    '#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
+    '#weight' => 30,
+    '#validate' => array(),
+  );
+  
+  // Send user back to node edit page if they cancel delete form.
+  $nid = $form['nid']['#value'];
+  $form['actions']['#href'] = 'node/' . $nid . '/edit';
+  $form['actions']['cancel']['#weight'] = 40;  
+
 }
 
 /**
@@ -211,7 +251,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
   // Make sure repeating date update functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
 
-  drupal_set_title(t('Save Event'), PASS_THROUGH);
+  drupal_set_title(t('Save Recurring Event'), PASS_THROUGH);
 
   $form['#node'] = $node;
   // Always provide entity id in the same form key as in the entity edit form.
@@ -219,40 +259,45 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
 
   $form['description'] = array(
     '#type' => 'item',
-    '#title' => t('Saving this event may affect related attendance information.'),
-  );
-
-  // Create button that gives user option of updating all dates associated
-  // with an entity.
-  $form['buttons']['update-all'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update all instances'),
-    '#submit' => array('update_all_dates'),
-    '#validate' => array(),
-  );
-
-  // Create button that gives user option of updating current and future
-  // dates associated with an entity.
-  $form['buttons']['update-future'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update current and future instances'),
-    '#submit' => array('update_future_dates'),
-    '#validate' => array(),
+    '#title' => t('Would you like to update only this event, all events in the series, or this and all future events in the series?  Updating this event may affect related attendance information.'),
   );
 
   // Create button that gives user option of updating the current date only.
   // dates associated with an entity.
-  $form['buttons']['update-current'] = array(
+  $form['actions']['update-current'] = array(
     '#type' => 'submit',
-    '#value' => t('Update current instance only'),
+    '#value' => t('Only this instance'),
     '#submit' => array('update_current_date'),
     '#validate' => array(),
+    '#weight' => 10,
+  );
+  
+  // Create button that gives user option of updating current and future
+  // dates associated with an entity.
+  $form['actions']['update-future'] = array(
+    '#type' => 'submit',
+    '#value' => t('All following'),
+    '#submit' => array('update_future_dates'),
+    '#validate' => array(),
+    '#weight' => 20,
+  );
+  
+  // Create button that gives user option of updating all dates associated
+  // with an entity.
+  $form['actions']['update-all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update all events in the series'),
+    '#submit' => array('update_all_dates'),
+    '#validate' => array(),
+    '#weight' => 30,
   );
 
+  // Cancel link that takes user back to form in edit mode.
   $form['actions']['cancel'] = array(
     '#type' => 'link',
     '#title' => 'Cancel',
     '#href' => 'node/' . $node->nid . '/edit',
+    '#weight' => 40,
   );
 
   return $form;
