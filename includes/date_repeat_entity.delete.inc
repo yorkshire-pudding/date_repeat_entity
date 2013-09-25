@@ -28,7 +28,12 @@ function delete_all_dates(&$form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+  $deleted_all_dates_successfully = _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+
+  if ($deleted_all_dates_successfully) {
+    // We still need to delete the original 
+    node_delete_confirm_submit($form, &$form_state);
+  }
 }
 
 /**
@@ -53,7 +58,12 @@ function delete_future_dates(&$form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+  $deleted_future_dates_successfully = _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+
+  if ($deleted_future_dates_successfully) {
+    // We still need to delete the original 
+    node_delete_confirm_submit($form, &$form_state);
+  }
 }
 
 /**
@@ -124,7 +134,7 @@ function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundl
   $start_date = $entity->field_date[$entity->language][0]['value'];
 
   // Instantiate boolean variable to track success of delete operation.
-  $deletedfuture_dates_successfully = FALSE;
+  $deleted_future_dates_successfully = FALSE;
 
   // Use EFQ to get all dates with the same field_master_uuid value.
   $query = new EntityFieldQuery();
@@ -150,7 +160,7 @@ function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundl
     // Delete an array of entities. Returns failure as FALSE, success as NULL.
     $success = entity_delete_multiple($entity_type, $date_entity_ids);
     if ($success !== FALSE) {
-      $deletedfuture_dates_successfully = TRUE;
+      $deleted_future_dates_successfully = TRUE;
     }
   }
 
@@ -158,5 +168,5 @@ function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundl
   // future dates were truncated and so the effective end date of the series
   // should be brought forward.
   // $rrule = date_api_ical_build_rrule($element['#value']);
-  return $deletedfuture_dates_successfully;
+  return $deleted_future_dates_successfully;
 }
