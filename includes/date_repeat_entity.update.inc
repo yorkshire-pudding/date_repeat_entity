@@ -14,7 +14,7 @@
  * @param array $form_state
  *   the current form state.
  */
-function update_all_dates(&$form, &$form_state) {
+function update_all_dates($form, &$form_state) {
 
   $entity_type = 'node';
   $bundle_type = 'event';
@@ -29,9 +29,23 @@ function update_all_dates(&$form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  // Update all the dates.
-  _update_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+  // If the dates have changes and are stored in the form state then update
+  // the entities accordingly.
+  if (isset($form_state['new_Dates'])) {
+    $new_dates = $form_state['new-dates'];
 
+    // Update all the dates.
+    $updated_entity_values = _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle_type, $master_uuid);
+
+    // Update the current entity based on any values returned from
+    // _update_all_dates function
+    if (isset($updated_entity_values) && $updated_entity_values != NULL) {
+      $entity->field_date[$entity->language][0]['value'] = $updated_entity_values['value'];
+      $entity->field_date[$entity->language][0]['value2'] = $updated_entity_values['value2'];
+      $entity->field_date[$entity->language][0]['rrule'] = $updated_entity_values['rrule'];
+      // $entity->field_repeat_start_date[$entity->language][0]['value'] = $updated_entity_values['repeat_date_start_value'];
+    }
+  }
   // Redirect user to form in view mode.
   $node = $form['#node'];
   $form_state['redirect'] = node_access('view', $node) ? 'node/' . $entity_id : '<front>';
@@ -287,317 +301,159 @@ function _update_current_date_only($entity, $entity_id, $entity_type = 'node', $
 }
 
 /**
- * Support the save of either a new or updated entity().
+ * Get new date series if an entity with a repeating date has changed.
+ * 
+ * Compares the start date, end date and RRULE of new and old entity.  If
+ * the date series has effectively changed, the function returns the new
+ * series.
+ * 
+ * @return array
+ *   NULL if the repeating date has not changed.
  */
-function date_repeat_entity_update($entity, $entity_type) {
+function _get_updated_dates($form, $form_state) {
 
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+  $new_dates = array();
 
-  // Make sure repeating date update functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
+  // Check that entity aleady exists - we are not validating new entities.
+  if ($form_state['values']['changed'] != "") {
 
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+    // Check that the entity form has a repeating date field and a field that
+    // controls the scope of changes to an entity e.g. All, Future, Single.
+    $entity_type = $form['#entity_type'];
+    $bundle_type = $form['#bundle'];
 
-  // Get entity id.
-  $entity_id = $wrapper->getIdentifier();
+    // Make sure utility functions are available.
+    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle_type);
 
-  // Get bundle type.
-  $bundle_type = $wrapper->getBundle();
+    if ($repeating_date_field != NULL) {
 
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
+      // Get the name of the repeating field.
+      $repeating_date_field_name = $repeating_date_field['field_name'];
+      $language = $form_state['values']['language'];
 
-  // Check that the entity is of type "node" and bundle of type event
-  // We have to do this because we are dependent on field_clone_date and
-  // master_uuid, both fields that are tied to event bundles.
-  if ($entity_type === 'node') {
+      $new_date_start_value = $form_state['values'][$repeating_date_field_name][$language][0]['value'];
+      $new_date_end_value = $form_state['values'][$repeating_date_field_name][$language][0]['value2'];
+      $new_rrule = $form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
 
-    // Process event nodes - ideally we should be able to work on bundles
-    // any time but the field_clone_state is part of the event bundle so
-    // we need to test for the 'event' bundle type.
-    if ($bundle_type === 'event') {
+      // TODO: consider if repeat_date_start_value needed - Google calendar uses it
+      $new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
 
-      // Get value of clone state - a new event node will have the default state
-      // of FALSE while a cloned event node will have a state of TRUE.
-      $field_clone_state = $wrapper->field_clone_state->value();
+      $entity_id = $form['#entity']->nid;
+      $old_entity = entity_load_unchanged($entity_type, $entity_id);
 
-      // Clone the new entity and its attached fields using Replicate API
-      // module.
-      if ($field_clone_state === FALSE) {
+      $old_date_start_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value'];
+      $old_date_end_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value2'];
+      $old_rrule = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['rrule'];
 
-        // If the current entity contains a repeating date field then
-        // we need to process the entity.
-        $field = _get_repeating_date_field($entity_type, $bundle_type);
+      // TODO: consider if repeat_date_start_value needed - Google calendar uses it
+      $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
 
-        if ($field != NULL) {
-          // If this is a new event, create a clone of the entity for
-          // each date instance in the series (except the first, which
-          // will be saved at the end of this routine.
-          if ($entity->is_new) {
+      // Check if the entity date has changed to the extent that
+      // the repeating date series has changed and therefore dependent data
+      // like date exceptions and referencing entities will need to be reset.
+      $new_date_data = array(
+        $new_date_start_value,
+        $new_date_end_value,
+        $new_rrule,
+        $new_repeat_date_start_value,
+      );
 
-            // Get the UUID from the master (original) date.
-            $master_uuid = $wrapper->uuid->value();
+      $old_date_data = array(
+        $old_date_start_value,
+        $old_date_end_value,
+        $old_rrule,
+        $old_repeat_date_start_value,
+      );
 
-            // Assign the UUID to the master UUID field.
-            // Give the original entity a reference to its own UUID.
-            // This will be needed for any updates of the recurring date series.
-            $wrapper->field_master_uuid = $master_uuid;
+      if ($new_date_data !== $old_date_data) {
+        $repeating_date_has_changed = TRUE;
 
-            // Get an array of field data for the current entity.
-            $field_name = $field['field_name'];
-            $field_data = field_get_items($entity_type, $entity, $field_name);
+        // If the repeating date series has changed, get new date series.
+        if ($repeating_date_has_changed) {
 
-            // Create a new set of dates by removing the first item in
-            // the array - since it is the original (master) entity.
-            array_shift($field_data);
+          // Get timezone associated with the field instance.
+          $timezone = date_get_timezone($repeating_date_field['settings']['tz_handling']);
 
-            // Clone a new entity for each date in series
-            // (except original entity).
-            foreach ($field_data as $delta => $datum) {
+          // Create DateObjects (extensions of PHP DateTime objects)
+          // from the new start date and old start date.
+          $new_date_start = new DateObject($new_date_start_value, $timezone, date_type_format($repeating_date_field['type']));
+          $new_date_end = new DateObject($new_date_end_value, $timezone, date_type_format($repeating_date_field['type']));
+          $old_date_start = new DateObject($old_date_start_value, $timezone, date_type_format($repeating_date_field['type']));
+          $old_date_end = new DateObject($old_date_end_value, $timezone, date_type_format($repeating_date_field['type']));
 
-              // Clone entity.
-              $clone_entity = replicate_clone_entity($entity_type, $entity);
+          // Create DateObjects from the series start and end dates.
+          // $new_repeat_date_start = new DateObject(
+          //   $new_repeat_date_start_value,
+          //   $timezone, date_type_format($repeating_date_field['type']));
+          // Return the time difference (seconds) between:
+          // a) the new start date and old start date and
+          // b) the new start date and new end date.
+          $seconds_between_new_and_old_start_date = $new_date_start->difference($old_date_start);
+          $seconds_between_new_start_and_new_end_date = $new_date_end->difference($new_date_start);
 
-              // Get entity wrapper for the cloned node.
-              $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
+          // Define PHP Interval objects.
+          $interval_between_new_and_old_start_date = new DateInterval('PT' . $seconds_between_new_and_old_start_date . 'S');
+          $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
 
-              // Flag the node as cloned.
-              $clone_wrapper->field_clone_state = TRUE;
+          // Get the series master entity uuid from the current entity.
+          $master_uuid_field_name = 'field_master_uuid';
+          $master_uuid = $old_entity->{$master_uuid_field_name}[$old_entity->language][0]['value'];
 
-              // Amend the title to indicate it has been cloned
-              // e.g. add the start datetime of the date instance to the
-              // title.
-              // TODO *** remove in production code ***
-              // $clone_start_time = $datum['value'];
-              // $clone_wrapper->title = $wrapper->label() .
-              //   " clone " . $clone_start_time;
-              // Give the cloned entity a reference to the master UUID.
-              $clone_wrapper->field_master_uuid = $master_uuid;
+          // Get the master entity using the master entity uuid.
+          $master_entity = _get_master_entity($entity_type, $bundle_type, $master_uuid);
 
-              // Reset the UUID, version UUID and version log string
-              // of the cloned entity to differentiate from the
-              // original entity.
-              $clone_entity->uuid = NULL;
-              $clone_entity->vuuid = NULL;
-              $clone_entity->log = "cloned from uuid : " . $master_uuid;
+          // Get the master entity start date value.
+          $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
 
-              // Replace field array with the row that matches the
-              // current delta.  Need to add an offset of 1 to delta
-              // because delta values are shifted when we applied
-              // array_shift to field_data.
-              $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
+          // Convert master entity start date to a DateObject.
+          $master_date_start = new DateObject($master_date_start_value, $timezone, date_type_format($repeating_date_field['type']));
 
-              // Save the cloned entity.
-              entity_save($entity_type, $clone_entity);
-            }
-            // Remove all items from the master entity's field array
-            // except the first.
-            array_splice($entity->field_date[$entity->language], 1);
+          // Create a master entity end date based on the start date
+          // $master_date_end = new DateObject(
+          //   $master_date_start_value,
+          //   $timezone,
+          //   date_type_format($repeating_date_field['type']));
+          // Apply the calculated interval between the new and old start
+          // dates of the current entity to the master entity start date.
+          if ($new_date_start > $old_date_start) {
+            $new_master_date_start = $master_date_start->add($interval_between_new_and_old_start_date);
           }
-          // If this an existing event that is being updated, update each
-          // instance in the series as required.
           else {
-
-            // Remove all items from the entity's field array except the
-            // first.
-            array_splice($entity->field_date[$entity->language], 1);
-
-            /*
-             * Check if certain properties and fields have changed that
-             * require an update of related entities within repeating
-             * date pattern.  These fields include:
-             *
-             * - title
-             * - field_repeat_start_date (start date of the series)
-             * - field_date value (start date)
-             * - field_date value2 (end date)
-             * - field_date rrule (recurrence rule)
-             */
-
-            // Get title property.
-            $new_title = $wrapper->label();
-
-            // Get field data for newly updated entity.
-            // Note : using EntityDataWrapper to retrieve datetime values
-            // returns integer instead of the format used in datetime column so
-            // alternate method using $entity object is needed.
-            $new_date_start_value = $entity->field_date[$entity->language][0]['value'];
-            $new_date_end_value = $entity->field_date[$entity->language][0]['value2'];
-            $new_repeat_date_start_value = $entity->field_repeat_start_date[$entity->language][0]['value'];
-
-            // Get rrule.
-            // Note : using EntityDataWrapper to retrieve the string
-            // from the rrule field results in an exception thrown so
-            // alternate method using $entity object is needed.
-            $new_rrule = $entity->field_date[$entity->language][0]['rrule'];
-
-            // Get field data for original entity.
-            $old_entity = entity_load_unchanged($entity_type, $entity_id);
-            $old_wrapper = entity_metadata_wrapper($entity_type, $old_entity);
-            $old_title = $old_wrapper->label();
-
-            // Get field data for newly updated entity.
-            // Note : using EntityDataWrapper to retrieve datetime values
-            // returns integer instead of the format used in datetime column so
-            // alternate method using $entity object is needed.
-            $old_date_start_value = $old_entity->field_date[$old_entity->language][0]['value'];
-            $old_date_end_value = $old_entity->field_date[$old_entity->language][0]['value2'];
-            $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
-
-            // Get rrule.
-            // Note : using EntityDataWrapper to retrieve the string
-            // from the rrule field results in an exception thrown so
-            // alternate method using $entity object is needed.
-            $old_rrule = $old_entity->field_date[$old_entity->language][0]['rrule'];
-
-            // Check if the entity date has changed to the extent that
-            // updates to other date instances in the series are
-            // required.
-            $new_date_data = array(
-              $new_title,
-              $new_date_start_value,
-              $new_date_end_value,
-              $new_repeat_date_start_value,
-              $new_rrule);
-            $old_date_data = array(
-              $old_title,
-              $old_date_start_value,
-              $old_date_end_value,
-              $old_repeat_date_start_value,
-              $old_rrule);
-
-            // Conservatively assume that the date _has_ changed.
-            $entity_date_changed = TRUE;
-            if ($new_date_data == $old_date_data) {
-              $entity_date_changed = FALSE;
-            }
-            if ($entity_date_changed) {
-
-              /*
-               * Determine extent to which changes are required.
-               *
-               * If $new_date_start_date
-               *
-               */
-
-              // Get timezone associated with the field instance.
-              $timezone = date_get_timezone($field['settings']['tz_handling']);
-
-              // Create DateObjects (extensions of PHP DateTime objects)
-              // from the new start date and old start date.
-              $new_date_start = new DateObject($new_date_start_value, $timezone, date_type_format($field['type']));
-              $new_date_end = new DateObject($new_date_end_value, $timezone, date_type_format($field['type']));
-              $old_date_start = new DateObject($old_date_start_value, $timezone, date_type_format($field['type']));
-              $old_date_end = new DateObject($old_date_end_value, $timezone, date_type_format($field['type']));
-
-              // Create DateObjects from the series start and end dates.
-              // $new_repeat_date_start = new DateObject(
-              //   $new_repeat_date_start_value,
-              //   $timezone, date_type_format($field['type']));
-              // Return the time difference (seconds) between:
-              // a) the new start date and old start date and
-              // b) the new start date and new end date.
-              $seconds_between_new_and_old_start_date = $new_date_start->difference($old_date_start);
-              $seconds_between_new_start_and_new_end_date = $new_date_end->difference($new_date_start);
-
-              // Define PHP Interval objects.
-              $interval_between_new_and_old_start_date = new DateInterval('PT' . $seconds_between_new_and_old_start_date . 'S');
-              $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
-
-              // Get the series master entity uuid from the current entity.
-              // $master_uuid = $wrapper->field_master_uuid->value();
-              // Get the master entity using the master entity uuid.
-              $master_entity = _get_master_entity($entity_type, $bundle_type, $master_uuid);
-
-              // Get the master entity start date value.
-              $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
-
-              // Convert master entity start date to a DateObject.
-              $master_date_start = new DateObject($master_date_start_value, $timezone, date_type_format($field['type']));
-
-              // Create a master entity end date based on the start date
-              // $master_date_end = new DateObject(
-              //   $master_date_start_value,
-              //   $timezone,
-              //   date_type_format($field['type']));
-              // Apply the calculated interval between the new and old start
-              // dates of the current entity to the master entity start date.
-              if ($new_date_start > $old_date_start) {
-                $new_master_date_start = $master_date_start->add($interval_between_new_and_old_start_date);
-              }
-              else {
-                $new_master_date_start = $master_date_start->sub($interval_between_new_and_old_start_date);
-              }
-
-              // Create a new master entity end date based on the adjusted
-              // master start date.
-              $new_master_date_start_clone = clone $new_master_date_start;
-
-              // Apply the calculated interval between the new start and
-              // new end date of the current entity to the new master entity
-              // end date. This will yield a new master end date.
-              if ($new_date_end > $old_date_end) {
-                $new_master_date_end = $new_master_date_start_clone->add($interval_between_new_start_and_new_end_date);
-              }
-              else {
-                $new_master_date_end = $new_master_date_start_clone->sub($interval_between_new_start_and_new_end_date);
-              }
-
-              // Get formatted strings representing new master start date and
-              // end date.
-              $new_master_date_start_value = date_format($new_master_date_start, date_type_format($field['type']));
-              $new_master_date_end_value = date_format($new_master_date_end, date_type_format($field['type']));
-
-              // Create an item array to simulate the field instance structure
-              // used in Date module's Form API functions.
-              $item = array(
-                'value' => $new_master_date_start_value,
-                'value2' => $new_master_date_end_value,
-                'timezone' => $timezone);
-
-              // Get new date series based on the new master start and end dates.
-              $new_dates = date_repeat_build_dates($new_rrule, NULL, $field, $item);
-
-              // Process updates based on the scope of changes selected by user.
-              $change_repeat_scope = $wrapper->field_change_repeat_scope->value();
-
-              switch ($change_repeat_scope) {
-                case "All":
-                  // Process all dates.
-                  $updated_entity_values = _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle_type, $master_uuid);
-                  break;
-
-                case "Future":
-                  // Process current and future dates.
-                  break;
-
-                case "Single":
-                  // Process current date only.
-                  // _process_current_date_only($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
-                  break;
-
-                default:
-                  // Throw exception since every user response should
-                  // satisfy one of the above three constraints.
-              }
-
-              // Update the current entity based on any values returned from
-              // _process_[function]
-              if (isset($updated_entity_values) && $updated_entity_values != NULL) {
-                $entity->field_date[$entity->language][0]['value'] = $updated_entity_values['value'];
-                $entity->field_date[$entity->language][0]['value2'] = $updated_entity_values['value2'];
-                $entity->field_date[$entity->language][0]['rrule'] = $updated_entity_values['rrule'];
-                // $entity->field_repeat_start_date[$entity->language][0]['value'] = $updated_entity_values['repeat_date_start_value'];
-              }
-            }
+            $new_master_date_start = $master_date_start->sub($interval_between_new_and_old_start_date);
           }
+
+          // Create a new master entity end date based on the adjusted
+          // master start date.
+          $new_master_date_start_clone = clone $new_master_date_start;
+
+          // Apply the calculated interval between the new start and
+          // new end date of the current entity to the new master entity
+          // end date. This will yield a new master end date.
+          if ($new_date_end > $old_date_end) {
+            $new_master_date_end = $new_master_date_start_clone->add($interval_between_new_start_and_new_end_date);
+          }
+          else {
+            $new_master_date_end = $new_master_date_start_clone->sub($interval_between_new_start_and_new_end_date);
+          }
+
+          // Get formatted strings representing new master start date and
+          // end date.
+          $new_master_date_start_value = date_format($new_master_date_start, date_type_format($repeating_date_field['type']));
+          $new_master_date_end_value = date_format($new_master_date_end, date_type_format($repeating_date_field['type']));
+
+          // Create an item array to simulate the field instance structure
+          // used in Date module's Form API functions.
+          $item = array(
+            'value' => $new_master_date_start_value,
+            'value2' => $new_master_date_end_value,
+            'timezone' => $timezone);
+
+          // Get new date series based on the new master start and end dates.
+          $new_dates = date_repeat_build_dates($new_rrule, NULL, $repeating_date_field, $item);
         }
       }
     }
   }
-
-  // Reset the flag for clone state, just before saving the entity.
-  $entity->field_clone_state = FALSE;
+  return $new_dates;
 }

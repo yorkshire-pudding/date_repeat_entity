@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Allows repeating date fields to be managed in entities
+ * Adds functionality to entities with repeating date fields
  */
 
 /**
@@ -23,7 +23,6 @@ function date_repeat_entity_menu() {
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
   );
-
   return $items;
 }
 
@@ -92,78 +91,6 @@ function date_repeat_entity_validate(&$form, &$form_state) {
 
   // Not currently used because validation moved to separate confirmation
   // form.
-}
-
-/**
- * Checks if an entity with a repeating date has changed.
- * 
- * Compares the start date, end date and RRULE of new and old entity .
- * 
- * @return bool
- *   TRUE if the repeating date has changed.
- */
-function _repeating_date_has_changed(&$form, &$form_state) {
-
-  $repeating_date_has_changed = FALSE;
-
-  // Check that entity aleady exists - we are not validating new entities.
-  if ($form_state['values']['changed'] != "") {
-
-    // Check that the entity form has a repeating date field and a field that
-    // controls the scope of changes to an entity e.g. All, Future, Single.
-    $entity_type = $form['#entity_type'];
-    $bundle_type = $form['#bundle'];
-
-    // Make sure utility functions are available.
-    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle_type);
-
-    if ($repeating_date_field != NULL) {
-
-      // Get the name of the repeating field.
-      $repeating_date_field_name = $repeating_date_field['field_name'];
-      $language = $form_state['values']['language'];
-
-      $new_date_start_value = $form_state['values'][$repeating_date_field_name][$language][0]['value'];
-      $new_date_end_value = $form_state['values'][$repeating_date_field_name][$language][0]['value2'];
-      $new_rrule = $form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
-
-      // TODO: consider if repeat_date_start_value needed - Google calendar uses it
-      $new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
-
-      $entity_id = $form['#entity']->nid;
-      $old_entity = entity_load_unchanged($entity_type, $entity_id);
-
-      $old_date_start_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value'];
-      $old_date_end_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value2'];
-      $old_rrule = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['rrule'];
-
-      // TODO: consider if repeat_date_start_value needed - Google calendar uses it
-      $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
-
-      // Check if the entity date has changed to the extent that
-      // the repeating date series has changed and therefore dependent data
-      // like date exceptions and referencing entities will need to be reset.
-      $new_date_data = array(
-        $new_date_start_value,
-        $new_date_end_value,
-        $new_rrule,
-        $new_repeat_date_start_value,
-      );
-
-      $old_date_data = array(
-        $old_date_start_value,
-        $old_date_end_value,
-        $old_rrule,
-        $old_repeat_date_start_value,
-      );
-
-      if ($new_date_data !== $old_date_data) {
-        $repeating_date_has_changed = TRUE;
-      }
-    }
-  }
-  return $repeating_date_has_changed;
 }
 
 /**
@@ -243,10 +170,16 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
  */
 function date_repeat_entity_node_save($form, &$form_state) {
 
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
+
   $entity_type = $form['#entity_type'];
   $bundle_type = $form['#bundle'];
   $entity_id = $form['nid']['#value'];
-  
+
   $destination = array();
   if (isset($_GET['destination'])) {
     $destination = drupal_get_destination();
@@ -256,20 +189,34 @@ function date_repeat_entity_node_save($form, &$form_state) {
   // Determine if the entity is being updated.
   if (isset($form['nid']['#value'])) {
 
-    // Determine if entity with repeating date field has changed.
-    if (_repeating_date_has_changed($form, $form_state) == TRUE) {
+    // Entity is not new so determine if entity with repeating date field
+    // has changed.
+    $new_dates = _get_updated_dates($form, $form_state);
+    if ($new_dates != NULL) {
+
+      // Store the new dates in the form state variable for use in save-confirm.
+      $form_state['new-dates'] = $new_dates;
 
       // If repeating date has changed then we need to redirect user to custom
       // form with additional options for type of save i.e. current, future, all.
-      $form_state['redirect'] = array('node/' . $entity_id . '/save-confirm', array('query' => $destination));
+      $form_state['redirect'] = array(
+        'node/' . $entity_id . '/save-confirm',
+        array(
+          'query' => $destination,
+        )
+      );
     }
     else {
-      // Update all nodes in series
+      // Update all entities in series.
+      // TODO: determine how to update entities whose fields have changed
+      // update_all_dates($form, $form_state);
     }
   }
   else {
-    $entity = _get_entity($entity_type, $bundle_type, $entity_id);
-    date_repeat_entity_update($entity, $entity_type);
+    // Entity is new so split recurring date series into separate entities.
+    // Use node form submit handler, which in turn will trigger a presave
+    // _after_ the UUID has been added to the entity.
+    node_form_submit($form, $form_state);
   }
 }
 
@@ -339,14 +286,15 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
 /**
  * Implements hook_entity_presave().
  */
-function date_repeat_entity_presave($entity, $entity_type) {
+function date_repeat_entity_entity_presave($entity, $entity_type) {
 
-  // TODO: turn this back on again after we determine how to avoid calling it
-  // when a user is saving from the node edit form - which has its own hooks
-  // and workflow.
-  // 
-  // At a minimum maybe we should cancel the save operation and force user
-  // to change dates via node edit forms.
-  // 
-  // date_repeat_entity_update($entity, $entity_type);
+  // When a new entity is created we need this hook because it is called
+  // after the entity object is created but before it is saved to the database.
+  // (Updates to existing entities will be managed through submit handlers.)
+  // Make sure repeating date create functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.create');
+
+  if ($entity->is_new) {
+    _create_dates($entity, $entity_type);
+  }
 }

@@ -168,7 +168,9 @@ function _is_repeating_date_field($fields) {
   foreach ($fields as $field_name => $field) {
 
     // Check if the field is a repeating date field.
-    if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
+    if (in_array($field['type'], array('date', 'datestamp', 'datetime'))
+          && date_is_repeat_field($field)
+        ) {
       return TRUE;
     }
   }
