@@ -18,7 +18,7 @@ function _create_dates($entity, $entity_type) {
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
 
   // Get bundle type.
-  $bundle_type = $wrapper->getBundle();
+  $bundle = $wrapper->getBundle();
 
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
@@ -31,7 +31,7 @@ function _create_dates($entity, $entity_type) {
     // Process event nodes - ideally we should be able to work on bundles
     // any time but the field_clone_state is part of the event bundle so
     // we need to test for the 'event' bundle type.
-    if ($bundle_type === 'event') {
+    if ($bundle === 'event') {
 
       // Get value of clone state - a new event node will have the default state
       // of FALSE while a cloned event node will have a state of TRUE.
@@ -43,7 +43,7 @@ function _create_dates($entity, $entity_type) {
 
         // If the current entity contains a repeating date field then
         // we need to process the entity.
-        $field = _get_repeating_date_field($entity_type, $bundle_type);
+        $field = _get_repeating_date_field($entity_type, $bundle);
 
         if ($field != NULL) {
           // Create a clone of the entity for each date instance in the series

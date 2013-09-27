@@ -14,3 +14,10 @@ core = 7.x
 ; stylesheets
 ; TODO: refine application of CSS to only pages that require it
 stylesheets[all][] = date_repeat_entity.css
+
+
+; Information added by drush on 2013-09-27
+version = "master-dev"
+project = "date_repeat_entity"
+datestamp = "1380302246"
+

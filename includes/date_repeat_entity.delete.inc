@@ -15,12 +15,12 @@
  * @param array $form_state
  *   the current form state.
  */
-function delete_all_dates(&$form, &$form_state) {
+function delete_all_dates($form, &$form_state) {
 
   $entity_type = 'node';
-  $bundle_type = 'event';
+  $bundle = 'event';
   $entity_id = $form['nid']['#value'];
-  $entity = _get_entity($entity_type, $bundle_type, $entity_id);
+  $entity = _get_entity($entity_type, $bundle, $entity_id);
 
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
@@ -28,12 +28,15 @@ function delete_all_dates(&$form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  $deleted_all_dates_successfully = _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+  $repeating_date_operation_successful = _delete_all_dates($entity, $entity_id, $entity_type, $bundle, $master_uuid);
 
-  if ($deleted_all_dates_successfully) {
+  if ($repeating_date_operation_successful) {
     // We still need to delete the original
-    node_delete_confirm_submit($form, $form_state);
+    //node_delete_confirm_submit($form, $form_state);
   }
+  
+  // Redirect to front page.
+  $form_state['redirect'] = '<front>';
 }
 
 /**
@@ -45,12 +48,12 @@ function delete_all_dates(&$form, &$form_state) {
  * @param array $form_state
  *   the current form state.
  */
-function delete_future_dates(&$form, &$form_state) {
+function delete_future_dates($form, &$form_state) {
 
   $entity_type = 'node';
-  $bundle_type = 'event';
+  $bundle = 'event';
   $entity_id = $form['nid']['#value'];
-  $entity = _get_entity($entity_type, $bundle_type, $entity_id);
+  $entity = _get_entity($entity_type, $bundle, $entity_id);
 
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
@@ -58,12 +61,15 @@ function delete_future_dates(&$form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  $deleted_future_dates_successfully = _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
+  $repeating_date_operation_successful = _delete_future_dates($entity, $entity_id, $entity_type, $bundle, $master_uuid);
 
-  if ($deleted_future_dates_successfully) {
+  if ($repeating_date_operation_successful) {
     // We still need to delete the original
-    node_delete_confirm_submit($form, $form_state);
+    //node_delete_confirm_submit($form, $form_state);
   }
+  
+    // Redirect to front page.
+  $form_state['redirect'] = '<front>';
 }
 
 /**
@@ -73,23 +79,23 @@ function delete_future_dates(&$form, &$form_state) {
  *   A numeric identifier for an identity.
  * @param string $entity_type
  *   An entity type e.g. node.
- * @param string $bundle_type
+ * @param string $bundle
  *   A bundle type e.g. event.
  */
-function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle_type = 'event', $master_uuid = NULL) {
+function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
-  // Instantiate boolean variable to track success of delete operation.
-  $deleted_all_dates_successfully = FALSE;
+  // Instantiate boolean variable to track success of operation.
+  $repeating_date_operation_successful = FALSE;
 
   // Use EFQ to get all dates with the same field_master_uuid value.
   $query = new EntityFieldQuery();
 
   // Define EFQ conditions based on the entity type, bundle and master_uuid.
   $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle_type)
+      ->entityCondition('bundle', $bundle)
       // Note: exclude current entity because it will be deleted as part of the
       // hook_entity_delete function that calls this one.
-      ->propertyCondition('nid', $entity_id, '<>')
+      //->propertyCondition('nid', $entity_id, '<>')
       ->fieldCondition('field_master_uuid', 'value', $master_uuid);
 
   // Retrieve matching entities.
@@ -104,11 +110,11 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle_t
     // Delete an array of entities. Returns failure as FALSE, success as NULL.
     $success = entity_delete_multiple($entity_type, $date_entity_ids);
     if ($success !== FALSE) {
-      $deleted_all_dates_successfully = TRUE;
+      $repeating_date_operation_successful = TRUE;
     }
   }
 
-  return $deleted_all_dates_successfully;
+  return $repeating_date_operation_successful;
 }
 
 /**
@@ -120,7 +126,7 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle_t
  *   A numeric identifier for an identity.
  * @param string $entity_type
  *   An entity type e.g. node.
- * @param string $bundle_type
+ * @param string $bundle
  *   A bundle type e.g. event.
  * @param string $master_uuid
  *   the alphanumeric master_uuid.
@@ -128,25 +134,25 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle_t
  * @return bool
  *   the sucess of this functioon is represented by this value.
  */
-function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundle_type = 'event', $master_uuid = NULL) {
+function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
   // Get start date value of current date instance.
   $start_date = $entity->field_date[$entity->language][0]['value'];
 
-  // Instantiate boolean variable to track success of delete operation.
-  $deleted_future_dates_successfully = FALSE;
+  // Instantiate boolean variable to track success of operation.
+  $repeating_date_operation_successful = FALSE;
 
   // Use EFQ to get all dates with the same field_master_uuid value.
   $query = new EntityFieldQuery();
 
   // Define EFQ conditions based on the entity type, bundle and master_uuid.
   $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle_type)
+      ->entityCondition('bundle', $bundle)
       // Note: exclude current entity because it will be deleted as part of the
       // hook_entity_delete function that calls this one.
-      ->propertyCondition('nid', $entity_id, '<>')
+      //->propertyCondition('nid', $entity_id, '<>')
       ->fieldCondition('field_master_uuid', 'value', $master_uuid)
-      ->fieldCondition('field_date', 'value', $start_date, '>');
+      ->fieldCondition('field_date', 'value', $start_date, '>=');
 
   // Retrieve matching entities.
   $result = $query->execute();
@@ -160,7 +166,7 @@ function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundl
     // Delete an array of entities. Returns failure as FALSE, success as NULL.
     $success = entity_delete_multiple($entity_type, $date_entity_ids);
     if ($success !== FALSE) {
-      $deleted_future_dates_successfully = TRUE;
+      $repeating_date_operation_successful = TRUE;
     }
   }
 
@@ -168,5 +174,5 @@ function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundl
   // future dates were truncated and so the effective end date of the series
   // should be brought forward.
   // $rrule = date_api_ical_build_rrule($element['#value']);
-  return $deleted_future_dates_successfully;
+  return $repeating_date_operation_successful;
 }

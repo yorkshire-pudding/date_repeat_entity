@@ -49,13 +49,13 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
 
   // Check if the form contains a repeating date field.
   $entity_type = $form['#entity_type'];
-  $bundle_type = $form['#bundle'];
+  $bundle = $form['#bundle'];
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
   // Check if the entity attached to the form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle_type);
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
   if ($repeating_date_field != NULL) {
 
@@ -87,7 +87,7 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
  * @param array $form_state
  *   defines form state at validation time including the values entered by user.
  */
-function date_repeat_entity_validate(&$form, &$form_state) {
+function date_repeat_entity_validate($form, &$form_state) {
 
   // Not currently used because validation moved to separate confirmation
   // form.
@@ -115,10 +115,10 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
 
   // Check if the form contains a repeating date field.
   $entity_type = 'node';
-  $bundle_type = 'event';
+  $bundle = 'event';
 
   // Check if the entity attached to the form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle_type);
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
   if ($repeating_date_field != NULL) {
 
@@ -142,7 +142,8 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
     $form['actions']['delete-future'] = array(
       '#type' => 'submit',
       '#value' => t('All following'),
-      '#submit' => array_merge(array('delete_future_dates'), $form['#submit']),
+      //'#submit' => array_merge(array('delete_future_dates'), $form['#submit']),
+      '#submit' => array('delete_future_dates'),
       '#weight' => 20,
       '#validate' => array(),
     );
@@ -153,7 +154,8 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
     $form['actions']['delete-all'] = array(
       '#type' => 'submit',
       '#value' => t('Delete all events in the series'),
-      '#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
+      //'#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
+      '#submit' => array('delete_all_dates'),
       '#weight' => 30,
       '#validate' => array(),
     );
@@ -177,7 +179,7 @@ function date_repeat_entity_node_save($form, &$form_state) {
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
 
   $entity_type = $form['#entity_type'];
-  $bundle_type = $form['#bundle'];
+  $bundle = $form['#bundle'];
   $entity_id = $form['nid']['#value'];
 
   $destination = array();
@@ -194,8 +196,7 @@ function date_repeat_entity_node_save($form, &$form_state) {
     $new_dates = _get_updated_dates($form, $form_state);
     if ($new_dates != NULL) {
 
-      // Store the new dates in the form state variable for use in save-confirm.
-      $form_state['new-dates'] = $new_dates;
+      // Store the new dates in the a session variable for use in save-confirm.
       $_SESSION['date_repeat_entity'] = $new_dates;
 
       // If repeating date has changed then we need to redirect user to custom
