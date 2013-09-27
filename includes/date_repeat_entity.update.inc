@@ -7,8 +7,8 @@
  */
 
 /**
- * Update all entities related to the one represented by the current form. 
- * 
+ * Update all entities related to the one represented by the current form.
+ *
  * @param array $form
  *   the current form.
  * @param array $form_state
@@ -31,8 +31,8 @@ function update_all_dates($form, &$form_state) {
 
   // If the dates have changes and are stored in the form state then update
   // the entities accordingly.
-  if (isset($form_state['new_Dates'])) {
-    $new_dates = $form_state['new-dates'];
+  if (isset($_SESSION['date_repeat_entity'])) {
+    $new_dates = $_SESSION['date_repeat_entity'];
 
     // Update all the dates.
     $updated_entity_values = _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle_type, $master_uuid);
@@ -52,8 +52,8 @@ function update_all_dates($form, &$form_state) {
 }
 
 /**
- * Update all entities related to the one represented by the current form. 
- * 
+ * Update all entities related to the one represented by the current form.
+ *
  * @param array $form
  *   the current form.
  * @param array $form_state
@@ -83,11 +83,11 @@ function update_future_dates(&$form, &$form_state) {
 }
 
 /**
- * Update only the current entity. 
- * 
+ * Update only the current entity.
+ *
  * No additional saving of other nodes is required because the current
  * entity will be saved by default.
- * 
+ *
  * @param array $form
  *   the current form.
  * @param array $form_state
@@ -302,11 +302,11 @@ function _update_current_date_only($entity, $entity_id, $entity_type = 'node', $
 
 /**
  * Get new date series if an entity with a repeating date has changed.
- * 
+ *
  * Compares the start date, end date and RRULE of new and old entity.  If
  * the date series has effectively changed, the function returns the new
  * series.
- * 
+ *
  * @return array
  *   NULL if the repeating date has not changed.
  */

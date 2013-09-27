@@ -8,10 +8,10 @@
 
 /**
  * Custom submit handler called when an entity deleted.
- * 
+ *
  * @param array $form
  *   the current form.
- * 
+ *
  * @param array $form_state
  *   the current form state.
  */
@@ -31,17 +31,17 @@ function delete_all_dates(&$form, &$form_state) {
   $deleted_all_dates_successfully = _delete_all_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
 
   if ($deleted_all_dates_successfully) {
-    // We still need to delete the original 
-    node_delete_confirm_submit($form, &$form_state);
+    // We still need to delete the original
+    node_delete_confirm_submit($form, $form_state);
   }
 }
 
 /**
  * Custom submit handler called when an entity deleted.
- * 
+ *
  * @param array $form
  *   the current form.
- * 
+ *
  * @param array $form_state
  *   the current form state.
  */
@@ -61,14 +61,14 @@ function delete_future_dates(&$form, &$form_state) {
   $deleted_future_dates_successfully = _delete_future_dates($entity, $entity_id, $entity_type, $bundle_type, $master_uuid);
 
   if ($deleted_future_dates_successfully) {
-    // We still need to delete the original 
-    node_delete_confirm_submit($form, &$form_state);
+    // We still need to delete the original
+    node_delete_confirm_submit($form, $form_state);
   }
 }
 
 /**
  * Delete all dates associated with a repeating date series.
- * 
+ *
  * @param int $entity_id
  *   A numeric identifier for an identity.
  * @param string $entity_type
@@ -113,7 +113,7 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle_t
 
 /**
  * Delete future dates associated with a repeating date series.
- * 
+ *
  * @param object $entity
  *   The entity object.
  * @param int $entity_id

@@ -95,7 +95,7 @@ function date_repeat_entity_validate(&$form, &$form_state) {
 
 /**
  * Alters the core node_delete_confirm form.
- * 
+ *
  * Function called when user clicks Delete button on node edit form.
  *
  * Checks if the entity:
@@ -114,8 +114,8 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
 
   // Check if the form contains a repeating date field.
-  $entity_type = $form['#entity_type'];
-  $bundle_type = $form['#bundle'];
+  $entity_type = 'node';
+  $bundle_type = 'event';
 
   // Check if the entity attached to the form has a repeating date field.
   $repeating_date_field = _get_repeating_date_field($entity_type, $bundle_type);
@@ -196,6 +196,7 @@ function date_repeat_entity_node_save($form, &$form_state) {
 
       // Store the new dates in the form state variable for use in save-confirm.
       $form_state['new-dates'] = $new_dates;
+      $_SESSION['date_repeat_entity'] = $new_dates;
 
       // If repeating date has changed then we need to redirect user to custom
       // form with additional options for type of save i.e. current, future, all.
