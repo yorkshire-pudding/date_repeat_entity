@@ -37,7 +37,7 @@ function update_all_dates($form, &$form_state) {
     $new_dates = $_SESSION['date_repeat_entity'];
 
     // Update all the dates.
-    _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid);
+    _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid, 'All');
   }
   // Redirect user to form in view mode.
   $node = $form['#node'];
@@ -77,7 +77,9 @@ function update_future_dates($form, &$form_state) {
     // Update current and future dates.
     // 
     // TODO: 
-    _update_future_dates($entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid);
+    _update_all_dates($entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid, 'Future');
+
+    //_update_future_dates($entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid, 'Future');
   }
 
   // Redirect user to form in view mode.
@@ -108,7 +110,7 @@ function update_current_date($form, &$form_state) {
 /**
  * Process all dates associated with a repeating date series.
  */
-function _update_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _update_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope='All') {
 
   $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
   $repeating_date_field_name = $repeating_date_field['field_name'];
@@ -118,14 +120,34 @@ function _update_all_dates($entity, $entity_id, $new_dates, $entity_type = 'node
   // entity in the series.
   $query = new EntityFieldQuery();
 
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  // Define common EFQ conditions based on the entity type, bundle and
+  // master_uuid.
   $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      // Note: exclude current entity.
-      // ->entityCondition('entity_id', array($entity_id), 'NOT IN')
-      // ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=')
-      // Sort by start date.
-      ->fieldOrderBy('field_date', 'value', 'ASC');
+        ->entityCondition('bundle', $bundle)
+        ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=');
+  
+  // Define additional field conditions depending on UI option.
+  switch ($scope) {
+    case 'All':
+      // No additional field conditions required.
+      break;
+    case 'Future':
+      // Assume that current and future entities means all entities that have a
+      // a start date that is equal to or greater than the start date of the 
+      // current entity.
+      $start_date = $entity->{$repeating_date_field_name}[$entity->language][0]['value'];
+      
+      // Add the field condition.
+      $query->fieldCondition($repeating_date_field_name, 'value', $start_date, '>=');
+      break;
+    case 'Current':
+      // Add a field condition limiting query to current entity only.
+      $query->entityCondition('entity_id',$entity_id, '=');
+      break;
+  }
+  
+  // Add an order by clause forcing sort by start date
+  $query->fieldOrderBy($repeating_date_field_name, 'value', 'ASC');
 
   // Retrieve matching entities.
   $result = $query->execute();
