@@ -193,11 +193,15 @@ function date_repeat_entity_node_save($form, &$form_state) {
 
     // Entity is not new so determine if entity with repeating date field
     // has changed.
-    $new_dates = _get_updated_dates($form, $form_state);
-    if ($new_dates != NULL) {
+    $repeating_date_has_changed  = _repeating_date_has_changed($form, $form_state);
+   
+    if ($repeating_date_has_changed === TRUE) {
 
-      // Store the new dates in the a session variable for use in save-confirm.
-      $_SESSION['date_repeat_entity'] = $new_dates;
+      // Store the form state in a session variable for use in save-confirm.
+      
+      $form_state['date_repeat_entity_entity_type'] = $entity_type;
+      $form_state['date_repeat_entity_bundle'] = $bundle;
+      $_SESSION['date_repeat_entity_form_state'] = $form_state;
 
       // If repeating date has changed then we need to redirect user to custom
       // form with additional options for type of save i.e. current, future, all.
@@ -249,6 +253,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
   $form['actions']['update-current'] = array(
     '#type' => 'submit',
     '#value' => t('Only this instance'),
+    '#name' => 'current',
     '#submit' => array('update_current_date'),
     '#validate' => array(),
     '#weight' => 10,
@@ -259,6 +264,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
   $form['actions']['update-future'] = array(
     '#type' => 'submit',
     '#value' => t('All following'),
+    '#name' => 'future',
     '#submit' => array('update_future_dates'),
     '#validate' => array(),
     '#weight' => 20,
@@ -269,6 +275,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
   $form['actions']['update-all'] = array(
     '#type' => 'submit',
     '#value' => t('Update all events in the series'),
+    '#name' => 'all',
     '#submit' => array('update_all_dates'),
     '#validate' => array(),
     '#weight' => 30,
