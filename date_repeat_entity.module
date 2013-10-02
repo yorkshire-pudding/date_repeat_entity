@@ -45,7 +45,7 @@ function date_repeat_entity_admin_paths() {
 /**
  * Implements hook_form_alter().
  */
-function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $form_id) {
+function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
   // Check if the form contains a repeating date field.
   $entity_type = $form['#entity_type'];
@@ -69,101 +69,10 @@ function date_repeat_entity_form_event_node_form_alter(&$form, &$form_state, $fo
     // Hide the master UUID from the event edit form.
     $form['field_master_uuid']['#access'] = FALSE;
 
-    // Add custom validation
-    $form['#validate'][] = 'date_repeat_entity_validate';
-
     // Replace core node submit handler with handler.
     // Note: this requires an explicit call to the core node submit handler
     // after this module's functions have been called.
     $form['actions']['submit']['#submit'] = array('date_repeat_entity_node_save');
-  }
-}
-
-/**
- * Provides custom validation for entities that have repeating date fields.
- *
- * @param object $form
- *   defines form structure.
- * @param array $form_state
- *   defines form state at validation time including the values entered by user.
- */
-function date_repeat_entity_validate($form, &$form_state) {
-
-  // Not currently used because validation moved to separate confirmation
-  // form.
-}
-
-/**
- * Alters the core node_delete_confirm form.
- *
- * Function called when user clicks Delete button on node edit form.
- *
- * Checks if the entity:
- *   a) represents a recurring field and,
- *   b) TODO: if there are entities that reference the entity.
- *
- * Provides options for deletion i.e. single instance current and future dates
- * or all dates.
- */
-function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
-
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-
-  // Make sure repeating date update functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
-
-  // Check if the form contains a repeating date field.
-  $entity_type = 'node';
-  $bundle = 'event';
-
-  // Check if the entity attached to the form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-
-  if ($repeating_date_field != NULL) {
-
-    drupal_set_title(t('Delete Recurring Event'), PASS_THROUGH);
-
-    $form['description'] = array(
-      '#type' => 'item',
-      '#title' => t('Would you like to delete only this event, all events in the series, or this and all future events in the series?  Deleting this event may affect related attendance information.'),
-    );
-
-    // Change title of default submit button.
-    // Only this instance (all other events in the series will remain).
-    // Note: the default handler will remain for this button
-    // i.e. node_delete_form_submit
-    $form['actions']['submit']['#value'] = t('Only this instance');
-    $form['actions']['submit']['#weight'] = 10;
-
-    // Create button that gives user option of deleting current and future
-    // dates associated with an entity.
-    // All following (this and all the following events will be deleted).
-    $form['actions']['delete-future'] = array(
-      '#type' => 'submit',
-      '#value' => t('All following'),
-      //'#submit' => array_merge(array('delete_future_dates'), $form['#submit']),
-      '#submit' => array('delete_future_dates'),
-      '#weight' => 20,
-      '#validate' => array(),
-    );
-
-    // Create button that gives user option of deleting all dates associated
-    // with an entity.
-    // All events in the series (all events in the series will be deleted).
-    $form['actions']['delete-all'] = array(
-      '#type' => 'submit',
-      '#value' => t('Delete all events in the series'),
-      //'#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
-      '#submit' => array('delete_all_dates'),
-      '#weight' => 30,
-      '#validate' => array(),
-    );
-
-    // Send user back to node edit page if they cancel delete form.
-    $nid = $form['nid']['#value'];
-    $form['actions']['#href'] = 'node/' . $nid . '/edit';
-    $form['actions']['cancel']['#weight'] = 40;
   }
 }
 
@@ -193,30 +102,26 @@ function date_repeat_entity_node_save($form, &$form_state) {
 
     // Entity is not new so determine if entity with repeating date field
     // has changed.
-    $repeating_date_has_changed  = _repeating_date_has_changed($form, $form_state);
-   
-    if ($repeating_date_has_changed === TRUE) {
+    $repeating_date_has_changed = _repeating_date_has_changed($form, $form_state);
 
-      // Store the form state in a session variable for use in save-confirm.
-      
-      $form_state['date_repeat_entity_entity_type'] = $entity_type;
-      $form_state['date_repeat_entity_bundle'] = $bundle;
-      $_SESSION['date_repeat_entity_form_state'] = $form_state;
+    // Add a flag that the repeating date has changed to the form state
+    $form_state['date_repeat_entity_repeating_date_has_changed'] = $repeating_date_has_changed;
 
-      // If repeating date has changed then we need to redirect user to custom
-      // form with additional options for type of save i.e. current, future, all.
-      $form_state['redirect'] = array(
-        'node/' . $entity_id . '/save-confirm',
-        array(
-          'query' => $destination,
-        )
-      );
-    }
-    else {
-      // Update all entities in series.
-      // TODO: determine how to update entities whose fields have changed
-      // update_all_dates($form, $form_state);
-    }
+    // Add the entity type and bundle type to form state
+    $form_state['date_repeat_entity_entity_type'] = $entity_type;
+    $form_state['date_repeat_entity_bundle'] = $bundle;
+
+    // Store the form state in a session variable for use in save-confirm.
+    $_SESSION['date_repeat_entity_form_state'] = $form_state;
+
+    // If repeating date has changed then we need to redirect user to custom
+    // form with additional options for type of save i.e. current, future, all.
+    $form_state['redirect'] = array(
+      'node/' . $entity_id . '/save-confirm',
+      array(
+        'query' => $destination,
+      )
+    );
   }
   else {
     // Entity is new so split recurring date series into separate entities.
@@ -305,5 +210,79 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
 
   if ($entity->is_new) {
     _create_dates($entity, $entity_type);
+  }
+}
+
+/**
+ * Alters the core node_delete_confirm form.
+ *
+ * Function called when user clicks Delete button on node edit form.
+ *
+ * Checks if the entity:
+ *   a) represents a recurring field and,
+ *   b) TODO: if there are entities that reference the entity.
+ *
+ * Provides options for deletion i.e. single instance current and future dates
+ * or all dates.
+ */
+function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state, $form_id) {
+
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
+
+  // Check if the form contains a repeating date field.
+  $entity_type = 'node';
+  $bundle = 'event';
+
+  // Check if the entity attached to the form has a repeating date field.
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+
+  if ($repeating_date_field != NULL) {
+
+    drupal_set_title(t('Delete Recurring Event'), PASS_THROUGH);
+
+    $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Would you like to delete only this event, all events in the series, or this and all future events in the series?  Deleting this event may affect related attendance information.'),
+    );
+
+    // Change title of default submit button.
+    // Only this instance (all other events in the series will remain).
+    // Note: the default handler will remain for this button
+    // i.e. node_delete_form_submit
+    $form['actions']['submit']['#value'] = t('Only this instance');
+    $form['actions']['submit']['#weight'] = 10;
+
+    // Create button that gives user option of deleting current and future
+    // dates associated with an entity.
+    // All following (this and all the following events will be deleted).
+    $form['actions']['delete-future'] = array(
+      '#type' => 'submit',
+      '#value' => t('All following'),
+      //'#submit' => array_merge(array('delete_future_dates'), $form['#submit']),
+      '#submit' => array('delete_future_dates'),
+      '#weight' => 20,
+      '#validate' => array(),
+    );
+
+    // Create button that gives user option of deleting all dates associated
+    // with an entity.
+    // All events in the series (all events in the series will be deleted).
+    $form['actions']['delete-all'] = array(
+      '#type' => 'submit',
+      '#value' => t('Delete all events in the series'),
+      //'#submit' => array_merge(array('delete_all_dates'), $form['#submit']),
+      '#submit' => array('delete_all_dates'),
+      '#weight' => 30,
+      '#validate' => array(),
+    );
+
+    // Send user back to node edit page if they cancel delete form.
+    $nid = $form['nid']['#value'];
+    $form['actions']['#href'] = 'node/' . $nid . '/edit';
+    $form['actions']['cancel']['#weight'] = 40;
   }
 }

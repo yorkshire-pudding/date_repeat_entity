@@ -28,7 +28,7 @@ function delete_all_dates($form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  $repeating_date_operation_successful = _delete_all_dates($entity, $entity_id, $entity_type, $bundle, $master_uuid);
+  $repeating_date_operation_successful = _delete_all_dates($entity_type, $bundle, $master_uuid);
 
   if ($repeating_date_operation_successful) {
     // We still need to delete the original
@@ -61,7 +61,7 @@ function delete_future_dates($form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  $repeating_date_operation_successful = _delete_future_dates($entity, $entity_id, $entity_type, $bundle, $master_uuid);
+  $repeating_date_operation_successful = _delete_future_dates($entity, $entity_type, $bundle, $master_uuid);
 
   if ($repeating_date_operation_successful) {
     // We still need to delete the original
@@ -82,7 +82,7 @@ function delete_future_dates($form, &$form_state) {
  * @param string $bundle
  *   A bundle type e.g. event.
  */
-function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _delete_all_dates($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
   // Instantiate boolean variable to track success of operation.
   $repeating_date_operation_successful = FALSE;
@@ -122,8 +122,6 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle =
  *
  * @param object $entity
  *   The entity object.
- * @param int $entity_id
- *   A numeric identifier for an identity.
  * @param string $entity_type
  *   An entity type e.g. node.
  * @param string $bundle
@@ -134,7 +132,7 @@ function _delete_all_dates($entity, $entity_id, $entity_type = 'node', $bundle =
  * @return bool
  *   the sucess of this functioon is represented by this value.
  */
-function _delete_future_dates($entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _delete_future_dates($entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
   // Get start date value of current date instance.
   $start_date = $entity->field_date[$entity->language][0]['value'];
