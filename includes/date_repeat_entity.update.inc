@@ -14,11 +14,13 @@
  * @param array $form_state
  *   the current form state.
  */
-function update_all_dates($form, &$form_state) {
+function update_dates($form, &$form_state) {
+
+  $date_repeat_entity_form_state = $_SESSION['date_repeat_entity_form_state'];
 
   $entity_id = $form['nid']['#value'];
-  $entity_type = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_entity_type'];
-  $bundle = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_bundle'];
+  $entity_type = $date_repeat_entity_form_state['date_repeat_entity_entity_type'];
+  $bundle = $date_repeat_entity_form_state['date_repeat_entity_bundle'];
 
   // Get scope of update.
   $scope = $form_state['triggering_element']['#name'];
@@ -31,50 +33,6 @@ function update_all_dates($form, &$form_state) {
 
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
-
-  $date_repeat_entity_form_state = $_SESSION['date_repeat_entity_form_state'];
-
-  // If the dates have changes and are stored in the form state then update
-  // the entities accordingly.
-  if (isset($date_repeat_entity_form_state)) {
-
-    // Update all the dates.
-    $new_master_entity = _update_all_dates($date_repeat_entity_form_state, $entity, $entity_id, $new_dates, $entity_type, $bundle, $master_uuid, $scope);
-  }
-
-  // Redirect user to form in view mode.
-  $viewable = entity_access('view', $entity_type, $new_master_entity);
-  $new_master_entity_id = $new_master_entity->nid;
-  $form_state['redirect'] = $viewable ? 'node/' . $new_master_entity_id : '<front>';
-}
-
-/**
- * Update all entities related to the one represented by the current form.
- *
- * @param array $form
- *   the current form.
- * @param array $form_state
- *   the current form state.
- */
-function update_future_dates($form, &$form_state) {
-
-  $entity_id = $form['nid']['#value'];
-  $entity_type = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_entity_type'];
-  $bundle = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_bundle'];
-
-  // Get scope of update.
-  $scope = $form_state['triggering_element']['#name'];
-
-  // Get an entity object.
-  $entity = _get_entity($entity_type, $bundle, $entity_id);
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
-  $date_repeat_entity_form_state = $_SESSION['date_repeat_entity_form_state'];
 
   // If the dates have changes and are stored in the form state then update
   // the entities accordingly.
@@ -83,12 +41,12 @@ function update_future_dates($form, &$form_state) {
     // Check if repeating date field has changed
     if ($date_repeat_entity_form_state['date_repeat_entity_repeating_date_has_changed'] == TRUE) {
 
-      // Replace all current and future dates and return a new master entity.
-      $new_master_entity = _replace_current_and_future_dates($date_repeat_entity_form_state, $entity, $entity_id, $entity_type, $bundle, $master_uuid, $scope);
+      // Replace dates and return a new master entity.
+      $new_master_entity = _replace_dates($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid, $scope);
     }
     else {
-      // Update all current and future dates
-      _update_current_and_future_dates($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid);
+      // Update future dates
+      _update_dates($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid, $scope);
 
       // Since we haven't replaced entity, redirect user to current entity.
       $new_master_entity = $entity;
@@ -118,9 +76,6 @@ function update_current_date($form, &$form_state) {
   $entity_type = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_entity_type'];
   $bundle = $_SESSION['date_repeat_entity_form_state']['date_repeat_entity_bundle'];
 
-  // Get scope of update.
-  $scope = $form_state['triggering_element']['#name'];
-
   // Get an entity object.
   $entity = _get_entity($entity_type, $bundle, $entity_id);
 
@@ -130,32 +85,14 @@ function update_current_date($form, &$form_state) {
   // Get the series master UUID.
   $master_uuid = $wrapper->field_master_uuid->value();
 
+  // retrieve state of form containing repeating date field 
   $date_repeat_entity_form_state = $_SESSION['date_repeat_entity_form_state'];
 
-  // If the dates have changes and are stored in the form state then update
-  // the entities accordingly.
-//  if (isset($date_repeat_entity_form_state)) {
-//
-//    // Check if repeating date field has changed
-//    if ($date_repeat_entity_form_state['date_repeat_entity_repeating_date_has_changed'] == TRUE) {
-//
-//      // Replace all current and future dates and return a new master entity.
-//      //$new_master_entity = _replace_current_and_future_dates($date_repeat_entity_form_state, $entity, $entity_id, $entity_type, $bundle, $master_uuid, $scope);
-//    }
-//    else {
-//      // Update all current and future dates
-//      _update_current_date_only($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid);
-//
-//      // Since we haven't replaced entity, redirect user to current entity.
-//      $new_master_entity = $entity;
-//    }
-//  }
-  
-        // Update all current and future dates
-      _update_current_date_only($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid);
+  // Update all current date only
+  _update_current_date_only($date_repeat_entity_form_state, $entity, $entity_type, $bundle, $master_uuid);
 
-      // Since we haven't replaced entity, redirect user to current entity.
-      $new_master_entity = $entity;
+  // Since we haven't replaced entity, redirect user to current entity.
+  $new_master_entity = $entity;
 
   // Redirect user to form in view mode.
   $viewable = entity_access('view', $entity_type, $new_master_entity);
@@ -164,131 +101,9 @@ function update_current_date($form, &$form_state) {
 }
 
 /**
- * Process all dates associated with a repeating date series.
+ * Replace dates associated with a repeating date series.
  */
-function _update_all_dates($date_repeat_entity_form_state, $entity, $entity_id, $new_dates, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope = 'all') {
-
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-  $repeating_date_field_name = $repeating_date_field['field_name'];
-
-  // Use EFQ to update all dates with the same field_master_uuid value
-  // keep the UUIDs but update the field_date multivalue fields for each
-  // entity in the series.
-  $query = new EntityFieldQuery();
-
-  // Define common EFQ conditions based on the entity type, bundle and
-  // master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=');
-
-  // Define additional field conditions depending on UI option.
-  switch ($scope) {
-    case 'all':
-      // No additional field conditions required.
-      break;
-    case 'current':
-      // Add a field condition limiting query to current entity only.
-      $query->entityCondition('entity_id', $entity_id, '=');
-      break;
-  }
-
-  // Add an order by clause forcing sort by start date
-  $query->fieldOrderBy($repeating_date_field_name, 'value', 'ASC');
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Retrieve RRULE for current entity.
-    // $rrule = $entity->field_date[$entity->language][0]['rrule'];
-    // Retrieve start date for current entity since this is being applied
-    // to all dates by the user.
-    // $start_date = $entity->field_date[$entity->language][0]['value'];
-    // $end_date = $entity->field_date[$entity->language][0]['value2'];
-    // Retrieve dates - note: date_repeat_calc returns sorted dates.
-    // TODO: account for exceptions and additions as well as timezone.
-    // $new_dates = date_repeat_calc($rrule, $start_date, NULL);
-    //
-    // Build an array of entity ids for for the entity type.
-    $date_entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $date_entities = entity_load($entity_type, $date_entity_ids);
-
-    // Update instances, where necessary...
-    // From the Groupanizer 3 design docs:
-    // Changing all instances will involve updating all instances represented
-    // by the recurrence pattern.  Exceptions need not be updated.
-    // In Google Calendar, if a recurrence pattern’s start date, start time
-    // but not duration apparently) and/or frequency is modified then all the
-    // properties of each exception will be changed to match the recurrence
-    // pattern.  This includes recreation of instances that were previously
-    // deleted exceptions. Google Calendar appears to employ a more subtle
-    // approach i.e. if an instance’s field (title, start date, color etc.)
-    // has been modified (i.e. it differs from that of the recurrence pattern,
-    // then the modified field values will be preserved.  However, if they are
-    // the same as the recurrence pattern then they will be changed to meet the
-    // recurrence pattern.  After changes are applied to all instances, they
-    // remain part of the original recurrence pattern.
-    // Dummy iterator because $date_entities keys are entity_ids
-    // and $new_dates keys are numeric indices.
-    $counter = 0;
-
-    // Generate a new master UUID.
-    $master_uuid_new = uuid_generate();
-
-    // Define the master UUID field name.
-    $master_uuid_field_name = 'field_master_uuid';
-
-    // Loop over the entities representing the dates in the series.
-    foreach ($date_entities as $delta => $date_entity) {
-
-      if ($delta == $entity_id) {
-        // The current $date_entity matches the one that was passed to this
-        // routine so need to update its UUID.
-        $date_entity->uuid = $master_uuid_new;
-      }
-
-      // Get the start, end date and RRULE for this date_entity based on its
-      // position in $new_dates array.
-      $date_entity_start_date = $new_dates[$counter]['value'];
-      $date_entity_end_date = $new_dates[$counter]['value2'];
-      $date_entity_rrule = $new_dates[$counter]['rrule'];
-
-      // Set the entity title.
-      $date_entity->title = $entity->title;
-
-      // Set the start date.
-      $date_entity->{$repeating_date_field_name}[$entity->language][0]['value'] = $date_entity_start_date;
-
-      // Set the end date.
-      $date_entity->{$repeating_date_field_name}[$entity->language][0]['value2'] = $date_entity_end_date;
-
-      // Set the RRULE field value.
-      $date_entity->{$repeating_date_field_name}[$entity->language][0]['rrule'] = $date_entity_rrule;
-
-      // Update the UUID that defines the date series.
-      $date_entity->{$master_uuid_field_name}[$entity->language][0]['value'] = $master_uuid_new;
-
-      // Set clone state to TRUE so the cloning procedures are skipped
-      // when hook_entity_presave is triggered.
-      //$date_entity->field_clone_state = TRUE;
-      // Save the entity.
-      entity_save($entity_type, $date_entity);
-
-      // Increment counter.
-      $counter++;
-    }
-  }
-}
-
-/**
- * Process current and future dates associated with a repeating date series.
- */
-function _replace_current_and_future_dates($date_repeat_entity_form_state, $entity, $entity_id, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope = 'all') {
+function _replace_dates($date_repeat_entity_form_state, $entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope = 'future') {
 
   // Placeholder variable for a new master entity that is created as part of a 
   // new repeating date series.
@@ -383,17 +198,26 @@ function _replace_current_and_future_dates($date_repeat_entity_form_state, $enti
       $new_master_entity = $clone_entity;
     }
   }
-
-  _delete_future_dates($entity, $entity_type, $bundle, $master_uuid);
-
+  
+  // Define dates associated with the former UUID.
+  switch ($scope) {
+    case 'all':
+      // Delete all associated with the former UUID
+      _delete_all_dates($entity_type, $bundle, $master_uuid);
+      break;
+    case 'future':
+      // Delete all current and future dates associated with the former UUID
+      _delete_future_dates($entity, $entity_type, $bundle, $master_uuid);
+      break;
+  }  
 
   return $new_master_entity;
 }
 
 /**
- * Process current and future dates associated with a repeating date series.
+ * Update dates associated with a repeating date series.
  */
-function _update_current_and_future_dates($date_repeat_entity_form_state, $entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function _update_dates($date_repeat_entity_form_state, $entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope = 'all') {
 
   $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
   $repeating_date_field_name = $repeating_date_field['field_name'];
@@ -411,9 +235,18 @@ function _update_current_and_future_dates($date_repeat_entity_form_state, $entit
   // master_uuid.
   $query->entityCondition('entity_type', $entity_type)
       ->entityCondition('bundle', $bundle)
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=')
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid, '=');
+
+  // Define additional field conditions depending on UI option.
+  switch ($scope) {
+    case 'all':
+      // No additional field conditions required.
+      break;
+    case 'future':
       // Add the field condition.
-      ->fieldCondition($repeating_date_field_name, 'value', $start_date, '>=');
+      $query->fieldCondition($repeating_date_field_name, 'value', $start_date, '>=');
+      break;
+  }
 
   // Retrieve matching entities.
   $result = $query->execute();
@@ -445,7 +278,7 @@ function _update_current_and_future_dates($date_repeat_entity_form_state, $entit
 }
 
 /**
- * Process current date only from a repeating date series.
+ * Update current date only from a repeating date series.
  */
 function _update_current_date_only($date_repeat_entity_form_state, $entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
@@ -547,6 +380,10 @@ function _repeating_date_has_changed($form, $form_state) {
 
 /**
  * Get new date series if an entity with a repeating date has changed.
+ * 
+ * Note: this function is not currently used but could be useful if we decide
+ * to allow all dates in a series to be shifted based on the revised RRULE,
+ * start and end dates of the instance that changed.
  * 
  * @param type $form_state
  * @param type $entity_id

@@ -173,7 +173,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
     '#type' => 'submit',
     '#value' => t('All following'),
     '#name' => 'future',
-    '#submit' => array('update_future_dates'),
+    '#submit' => array('update_dates'),
     '#validate' => array(),
     '#weight' => 20,
   );
@@ -184,7 +184,7 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
     '#type' => 'submit',
     '#value' => t('Update all events in the series'),
     '#name' => 'all',
-    '#submit' => array('update_all_dates'),
+    '#submit' => array('update_dates'),
     '#validate' => array(),
     '#weight' => 30,
   );
