@@ -47,32 +47,35 @@ function date_repeat_entity_admin_paths() {
  */
 function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
-  // Check if the form contains a repeating date field.
-  $entity_type = $form['#entity_type'];
-  $bundle = $form['#bundle'];
+  // Check if the form is a node edit form
+  if (!empty($form['#node_edit_form'])) {
 
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+    $entity_type = $form['#entity_type'];
+    $bundle = $form['#bundle'];
 
-  // Check if the entity attached to the form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+    // Make sure utility functions are available.
+    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
-  if ($repeating_date_field != NULL) {
+    // Check if the entity attached to the form has a repeating date field.
+    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
-    // Add hidden field to form.
-    $repeating_date_field_name = $repeating_date_field['field_name'];
-    $form['repeating_date_field'] = array('#type' => 'hidden', '#value' => $repeating_date_field_name);
+    if ($repeating_date_field != NULL) {
 
-    // Hide the clone state from the event edit form.
-    $form['field_clone_state']['#access'] = FALSE;
+      // Hide the clone state from the event edit form.
+      if (isset($form['field_clone_state'])) {
+        $form['field_clone_state']['#access'] = FALSE;
+      }
 
-    // Hide the master UUID from the event edit form.
-    $form['field_master_uuid']['#access'] = FALSE;
+      // Hide the master UUID from the event edit form.
+      if (isset($form['field_master_uuid'])) {
+        $form['field_master_uuid']['#access'] = FALSE;
+      }
 
-    // Replace core node submit handler with handler.
-    // Note: this requires an explicit call to the core node submit handler
-    // after this module's functions have been called.
-    $form['actions']['submit']['#submit'] = array('date_repeat_entity_node_save');
+      // Replace core node submit handler with handler.
+      // Note: this requires an explicit call to the core node submit handler
+      // after this module's functions have been called.
+      $form['actions']['submit']['#submit'] = array('date_repeat_entity_node_save');
+    }
   }
 }
 
