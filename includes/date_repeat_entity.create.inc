@@ -20,9 +20,6 @@ function _create_dates($entity, $entity_type) {
   // Get bundle type.
   $bundle = $wrapper->getBundle();
 
-  // Get the series master UUID.
-  $master_uuid = $wrapper->field_master_uuid->value();
-
   // Check that the entity is of type "node" and bundle of type event
   // We have to do this because we are dependent on field_clone_date and
   // master_uuid, both fields that are tied to event bundles.
@@ -32,7 +29,7 @@ function _create_dates($entity, $entity_type) {
     // any time but the field_clone_state is part of the event bundle so
     // we need to test for the 'event' bundle type.
     if ($bundle === 'event') {
-
+      
       // Get value of clone state - a new event node will have the default state
       // of FALSE while a cloned event node will have a state of TRUE.
       $field_clone_state = $wrapper->field_clone_state->value();
@@ -43,9 +40,9 @@ function _create_dates($entity, $entity_type) {
 
         // If the current entity contains a repeating date field then
         // we need to process the entity.
-        $field = _get_repeating_date_field($entity_type, $bundle);
+        $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
-        if ($field != NULL) {
+        if ($repeating_date_field != NULL) {
           // Create a clone of the entity for each date instance in the series
           // except the first, which will be saved though the submit handler
           // on the node edit form itself.
@@ -60,7 +57,7 @@ function _create_dates($entity, $entity_type) {
             $wrapper->field_master_uuid = $master_uuid;
 
             // Get an array of field data for the current entity.
-            $field_name = $field['field_name'];
+            $field_name = $repeating_date_field['field_name'];
             $field_data = field_get_items($entity_type, $entity, $field_name);
 
             // Create a new set of dates by removing the first item in
@@ -80,13 +77,6 @@ function _create_dates($entity, $entity_type) {
               // Flag the node as cloned.
               $clone_wrapper->field_clone_state = TRUE;
 
-              // Amend the title to indicate it has been cloned
-              // e.g. add the start datetime of the date instance to the
-              // title.
-              // TODO *** remove in production code ***
-              // $clone_start_time = $datum['value'];
-              // $clone_wrapper->title = $wrapper->label() .
-              //   " clone " . $clone_start_time;
               // Give the cloned entity a reference to the master UUID.
               $clone_wrapper->field_master_uuid = $master_uuid;
 

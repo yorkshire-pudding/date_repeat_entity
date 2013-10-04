@@ -123,7 +123,7 @@ function _get_repeating_date_field($entity_type, $bundle) {
   $fields = field_info_fields();
 
   // Loop through the fields.
-  foreach ($fields as $field_name => $field) {
+  foreach ($fields as $field) {
 
     // Check if the field is a repeating date field.
     if (in_array($field['type'], array('date', 'datestamp', 'datetime')) && date_is_repeat_field($field)) {
@@ -150,30 +150,54 @@ function _get_repeating_date_field($entity_type, $bundle) {
 }
 
 /**
- * Determines if an array of fields contains a repeating date field.
+ * Returns the name of a repeating date field, where it exists.
+ *
+ * Searches database field definition for a repeating date field which is used
+ * in the $entity_type (e.g. node) and $bundle (e.g. event) passed as
+ * arguments.
  *
  * Note: Function returns once the first match of a repeating date field
  * is found and does not consider the scenario where there may be more than
- * one repeating date field.
+ * one repeating date field associated with the $entity_type and $bundle.
  *
- * @param array $fields
- *   an array of field objects.
- * 
- * @return bool
- *   indicating if field is a repeating date field.
+ * @param string $entity_type
+ *   an entity type e.g. node.
+ * @param string $bundle
+ *   a bundle type e.g. event.
+ * @param string $name
+ *   a field machine name e.g. field_master_uuid.
+ *
+ * @return array
+ *   representing a field.
  */
-function _is_repeating_date_field($fields) {
+function _get_field($entity_type, $bundle, $name) {
+
+  // Set a default value of NULL.
+  $field_match = NULL;
+
+  // Retrieve meta information about all of the fields in the database.
+  $fields = field_info_fields();
 
   // Loop through the fields.
   foreach ($fields as $field_name => $field) {
 
-    // Check if the field is a repeating date field.
-    if (in_array($field['type'], array('date', 'datestamp', 'datetime'))
-          && date_is_repeat_field($field)
-        ) {
-      return TRUE;
-    }
+      // Loop through the entity types associated with this field.
+      foreach ($field['bundles'] as $field_entity_type => $bundles) {
+
+        // Loop through the bundles (content types - in the case of node
+        // entity types) associated with this entity type.
+        foreach ($bundles as $field_bundle) {
+
+          // If the entity type, bundle and field name passed to this function
+          // are the same as the entity type and bundle of the repeating date
+          // field then we have a match.
+          if ($entity_type == $field_entity_type &&
+              $bundle == $field_bundle &&
+              $name == $field_name) {
+            $field_match = $field;
+          }
+        }
+      }
   }
-  // If no repeating date field, return false.
-  return FALSE;
+  return $field_match;
 }

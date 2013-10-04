@@ -4,6 +4,11 @@
  * @file
  * Adds functionality to entities with repeating date fields
  */
+/*
+ * Define field names necessary for module to function. 
+ */
+define('FIELD_MASTER_UUID', 'field_master_uuid');
+define('FIELD_CLONE_STATE', 'field_clone_state');
 
 /**
  * Implements hook_menu().
@@ -59,7 +64,13 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
     // Check if the entity attached to the form has a repeating date field.
     $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
-    if ($repeating_date_field != NULL) {
+    // Check if the entity also has other fields required for this module to
+    // function properly.
+    $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
+    $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+
+    if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL
+    ) {
 
       // Hide the clone state from the event edit form.
       if (isset($form['field_clone_state'])) {
@@ -202,17 +213,37 @@ function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
 
 /**
  * Implements hook_entity_presave().
+ * 
+ * When a new entity is created we need this hook because it is called
+ * after the entity object is created but before it is saved to the database.
+ * (Updates to existing entities will be managed through submit handlers.)
  */
 function date_repeat_entity_entity_presave($entity, $entity_type) {
 
-  // When a new entity is created we need this hook because it is called
-  // after the entity object is created but before it is saved to the database.
-  // (Updates to existing entities will be managed through submit handlers.)
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+
   // Make sure repeating date create functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.create');
 
-  if ($entity->is_new) {
-    _create_dates($entity, $entity_type);
+  // Get entity wrapper.
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  // Get bundle type.
+  $bundle = $wrapper->getBundle();
+
+  // Check if the entity attached to the form has a repeating date field.
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+
+  // Check if the entity also has other fields required for this module to
+  // function properly.
+  $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
+  $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+
+  if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
+    if ($entity->is_new) {
+      _create_dates($entity, $entity_type);
+    }
   }
 }
 
@@ -238,12 +269,18 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
 
   // Check if the form contains a repeating date field.
   $entity_type = 'node';
-  $bundle = 'event';
+  $node = $form['#node'];
+  $bundle = $node->type;
 
   // Check if the entity attached to the form has a repeating date field.
   $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
 
-  if ($repeating_date_field != NULL) {
+  // Check if the entity also has other fields required for this module to
+  // function properly.
+  $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
+  $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+
+  if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
 
     drupal_set_title(t('Delete Recurring Event'), PASS_THROUGH);
 
