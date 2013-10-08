@@ -3,6 +3,7 @@ description = Manages entities with repeating dates using the Date Repeat API.
 dependencies[] = date_api
 dependencies[] = date
 dependencies[] = date_repeat
+dependencies[] = date_repeat_field
 dependencies[] = replicate
 dependencies[] = uuid
 
@@ -48,4 +49,11 @@ datestamp = "1380774418"
 version = "master-dev"
 project = "date_repeat_entity"
 datestamp = "1380821979"
+
+
+
+; Information added by drush on 2013-10-07
+version = "master-dev"
+project = "date_repeat_entity"
+datestamp = "1381200298"
 
