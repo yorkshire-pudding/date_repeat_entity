@@ -111,6 +111,8 @@ function date_repeat_entity_node_save($form, &$form_state) {
     unset($_GET['destination']);
   }
 
+  node_form_submit($form, $form_state);
+  
   // Determine if the entity is being updated.
   if (isset($form['nid']['#value'])) {
 
@@ -141,7 +143,7 @@ function date_repeat_entity_node_save($form, &$form_state) {
     // Entity is new so split recurring date series into separate entities.
     // Use node form submit handler, which in turn will trigger a presave
     // _after_ the UUID has been added to the entity.
-    node_form_submit($form, $form_state);
+    //node_form_submit($form, $form_state);
   }
 }
 
