@@ -11,43 +11,6 @@ define('FIELD_MASTER_UUID', 'field_master_uuid');
 define('FIELD_CLONE_STATE', 'field_clone_state');
 
 /**
- * Implements hook_menu().
- */
-function date_repeat_entity_menu() {
-  $items = array();
-
-  // Create routing for the node save confirmation form.
-  $items['node/%node/save-confirm'] = array(
-    'title' => 'Save Confirmation',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('date_repeat_entity_node_save_confirm', 1),
-    'description' => 'A confirmation form for saving event nodes',
-    'access callback' => 'node_access',
-    'access arguments' => array('update', 1),
-    'weight' => 1,
-    'type' => MENU_LOCAL_TASK,
-    'context' => MENU_CONTEXT_INLINE,
-  );
-  return $items;
-}
-
-/**
- * Implements hook_admin_paths().
- */
-function date_repeat_entity_admin_paths() {
-
-  // If the site is configured to use a different theme for administration
-  // then this hook provides a list of paths where the administration theme
-  // should be used.
-  if (variable_get('node_admin_theme')) {
-    $paths = array(
-      'node/*/save-confirm' => TRUE,
-    );
-    return $paths;
-  }
-}
-
-/**
  * Implements hook_form_alter().
  */
 function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
@@ -63,7 +26,7 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
     // Check if the entity attached to the form has a repeating date field.
     $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-
+    
     // Check if the entity also has other fields required for this module to
     // function properly.
     $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
@@ -82,135 +45,38 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
         $form['field_master_uuid']['#access'] = FALSE;
       }
 
-      // Replace core node submit handler with handler.
-      // Note: this requires an explicit call to the core node submit handler
-      // after this module's functions have been called.
-      $form['actions']['submit']['#submit'][] = 'date_repeat_entity_node_save';
+      // Add  update option  buttons for existing nodes
+      // (Determine if the entity is being updated.)
+      if (isset($form['nid']['#value'])) {
+        
+        // Change default save button text
+        $form['actions']['submit']['#value'] = t('Update just this event');
+        $update_button_weight = $form['actions']['submit']['#weight'];
+
+        // Create button that gives user option of updating current and future
+        // dates associated with an entity.
+        $form['actions']['update-future'] = array(
+          '#type' => 'submit',
+          '#value' => t('Update all following'),
+          '#name' => 'future',
+          '#submit' => array('update_dates'),
+          '#validate' => array(),
+          '#weight' => $update_button_weight + 1,
+        );
+
+        // Create button that gives user option of updating all dates associated
+        // with an entity.
+        $form['actions']['update-all'] = array(
+          '#type' => 'submit',
+          '#value' => t('Update all events in the series'),
+          '#name' => 'all',
+          '#submit' => array('update_dates'),
+          '#validate' => array(),
+          '#weight' => $update_button_weight + 2,
+        );
+      }
     }
   }
-}
-
-/**
- * Submit handler for entity forms with repeating dates.
- */
-function date_repeat_entity_node_save($form, &$form_state) {
-
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-
-  // Make sure repeating date update functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
-
-  $entity_type = $form['#entity_type'];
-  $bundle = $form['#bundle'];
-  $entity_id = $form['nid']['#value'];
-
-  $destination = array();
-  if (isset($_GET['destination'])) {
-    $destination = drupal_get_destination();
-    unset($_GET['destination']);
-  }
-
- // node_form_submit($form, $form_state);
-  
-  // Determine if the entity is being updated.
-  if (isset($form['nid']['#value'])) {
-
-    // Entity is not new so determine if entity with repeating date field
-    // has changed.
-    $repeating_date_has_changed = _repeating_date_has_changed($form, $form_state);
-
-    // Add a flag that the repeating date has changed to the form state
-    $form_state['date_repeat_entity_repeating_date_has_changed'] = $repeating_date_has_changed;
-
-    // Add the entity type and bundle type to form state
-    $form_state['date_repeat_entity_entity_type'] = $entity_type;
-    $form_state['date_repeat_entity_bundle'] = $bundle;
-
-    // Store the form state in a session variable for use in save-confirm.
-    $_SESSION['date_repeat_entity_form_state'] = $form_state;
-
-    // If repeating date has changed then we need to redirect user to custom
-    // form with additional options for type of save i.e. current, future, all.
-    $form_state['redirect'] = array(
-      'node/' . $entity_id . '/save-confirm',
-      array(
-        'query' => $destination,
-      )
-    );
-  }
-  else {
-    // Entity is new so split recurring date series into separate entities.
-    // Use node form submit handler, which in turn will trigger a presave
-    // _after_ the UUID has been added to the entity.
-    //node_form_submit($form, $form_state);
-  }
-}
-
-/**
- * Form constructor for the custom node save confirmation form.
- */
-function date_repeat_entity_node_save_confirm($form, &$form_state, $node) {
-
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-
-  // Make sure repeating date update functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
-
-  drupal_set_title(t('Save Recurring Event'), PASS_THROUGH);
-
-  $form['#node'] = $node;
-  // Always provide entity id in the same form key as in the entity edit form.
-  $form['nid'] = array('#type' => 'value', '#value' => $node->nid);
-
-  $form['description'] = array(
-    '#type' => 'item',
-    '#title' => t('Would you like to update only this event, all events in the series, or this and all future events in the series?  Updating this event may affect related attendance information.'),
-  );
-
-  // Create button that gives user option of updating the current date only.
-  // dates associated with an entity.
-  $form['actions']['update-current'] = array(
-    '#type' => 'submit',
-    '#value' => t('Only this instance'),
-    '#name' => 'current',
-    '#submit' => array('update_current_date'),
-    '#validate' => array(),
-    '#weight' => 10,
-  );
-
-  // Create button that gives user option of updating current and future
-  // dates associated with an entity.
-  $form['actions']['update-future'] = array(
-    '#type' => 'submit',
-    '#value' => t('All following'),
-    '#name' => 'future',
-    '#submit' => array('update_dates'),
-    '#validate' => array(),
-    '#weight' => 20,
-  );
-
-  // Create button that gives user option of updating all dates associated
-  // with an entity.
-  $form['actions']['update-all'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update all events in the series'),
-    '#name' => 'all',
-    '#submit' => array('update_dates'),
-    '#validate' => array(),
-    '#weight' => 30,
-  );
-
-  // Cancel link that takes user back to form in edit mode.
-  $form['actions']['cancel'] = array(
-    '#type' => 'link',
-    '#title' => 'Cancel',
-    '#href' => 'node/' . $node->nid . '/edit',
-    '#weight' => 40,
-  );
-
-  return $form;
 }
 
 /**
