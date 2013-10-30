@@ -26,7 +26,7 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
     // Check if the entity attached to the form has a repeating date field.
     $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-    
+
     // Check if the entity also has other fields required for this module to
     // function properly.
     $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
@@ -34,6 +34,32 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
     if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL
     ) {
+
+      $submit_button_weight = $form['actions']['submit']['#weight'];
+      $button_weight = $submit_button_weight;
+
+      // Display page 2 if $form_state['page_num'] == 2
+      if (!empty($form_state['page_num']) && $form_state['page_num'] == 2) {
+        // Create button that gives user option of updating current and future
+        // dates associated with an entity.
+        $button_weight++;
+        $form['confirm-save-action'] = array(
+          '#type' => 'submit',
+          '#value' => t('Confirm Save Action'),
+          '#weight' => $button_weight,
+          '#submit' => array('confirm_save_callback'),);
+      }
+      // Create button that gives user option of updating current and future
+      // dates associated with an entity.
+      $button_weight++;
+      $form['actions']['confirm-save'] = array(
+        '#type' => 'submit',
+        '#value' => t('Confirm Save'),
+        '#name' => 'confirm',
+        '#submit' => array('confirm_save'),
+        '#validate' => array(),
+        '#weight' => $button_weight,
+      );
 
       // Hide the clone state from the event edit form.
       if (isset($form['field_clone_state'])) {
@@ -48,35 +74,54 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
       // Add  update option  buttons for existing nodes
       // (Determine if the entity is being updated.)
       if (isset($form['nid']['#value'])) {
-        
+
         // Change default save button text
         $form['actions']['submit']['#value'] = t('Update just this event');
-        $update_button_weight = $form['actions']['submit']['#weight'];
 
         // Create button that gives user option of updating current and future
         // dates associated with an entity.
+        $button_weight++;
         $form['actions']['update-future'] = array(
           '#type' => 'submit',
           '#value' => t('Update all following'),
           '#name' => 'future',
           '#submit' => array('update_dates'),
           '#validate' => array(),
-          '#weight' => $update_button_weight + 1,
+          '#weight' => $button_weight,
         );
 
         // Create button that gives user option of updating all dates associated
         // with an entity.
+        $button_weight++;
         $form['actions']['update-all'] = array(
           '#type' => 'submit',
           '#value' => t('Update all events in the series'),
           '#name' => 'all',
           '#submit' => array('update_dates'),
           '#validate' => array(),
-          '#weight' => $update_button_weight + 2,
+          '#weight' => $button_weight,
         );
       }
     }
   }
+}
+
+/**
+ * Submit handler for the 'Confirm save' action.
+ *
+ * @see node_form_build_preview()
+ */
+function confirm_save($form, &$form_state) {
+
+  $form_state['page_num'] = 2;
+  $form_state['rebuild'] = TRUE;
+  
+  drupal_set_message(t('And the favorite colo'));
+}
+
+function confirm_save_callback($form, &$form_state) {
+
+  $test = 'got this far';
 }
 
 /**
