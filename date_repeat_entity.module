@@ -5,7 +5,7 @@
  * Adds functionality to entities with repeating date fields
  */
 /*
- * Define field names necessary for module to function. 
+ * Define field names necessary for module to function.
  */
 define('FIELD_MASTER_UUID', 'field_master_uuid');
 define('FIELD_CLONE_STATE', 'field_clone_state');
@@ -79,7 +79,7 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
 /**
  * Add a field set containing confirmation buttons to the top of a form.
- * 
+ *
  * @param type $form
  *   The form object that is being built
  */
@@ -91,7 +91,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   // Prepend a callback to submit_callbacks.
   array_unshift($submit_callbacks, 'date_repeat_entity_update_dates');
 
-  // Get title field weight because we want our fieldset 
+  // Get title field weight because we want our fieldset
   // and its confirmation buttons to be above the form title,
   // which has a weight of -5 by default.
   // see @node.pages.inc
@@ -111,26 +111,26 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
 
   // Add a fieldset with confirmation buttons.
   // Create button that gives user option of updating current and future
-  // dates associated with an entity.  Prepend our callback to the 
+  // dates associated with an entity.  Prepend our callback to the
   // default submit action callbacks.
   $button_weight++;
   $form['update-buttons']['update-current'] = array(
     '#type' => 'submit',
     '#value' => t('Update current'),
-    '#name' => 'current',
+    '#name' => 'update_current',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
     '#weight' => $button_weight,
   );
 
   // Create button that gives user option of updating current and future
-  // dates associated with an entity.  Prepend our callback to the 
+  // dates associated with an entity.  Prepend our callback to the
   // default submit action callbacks.
   $button_weight++;
   $form['update-buttons']['update-future'] = array(
     '#type' => 'submit',
     '#value' => t('Update all following'),
-    '#name' => 'future',
+    '#name' => 'update_future',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
     '#weight' => $button_weight,
@@ -143,17 +143,29 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   $form['update-buttons']['update-all'] = array(
     '#type' => 'submit',
     '#value' => t('Update all events in the series'),
-    '#name' => 'all',
+    '#name' => 'update_all',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
     '#weight' => $button_weight,
   );
-  
+
+  // Create button that gives user option of cancelling updates
+  $button_weight++;
+  $form['update-buttons']['update-cancel'] = array(
+    '#type' => 'submit',
+    '#value' => t('Cancel update'),
+    '#name' => 'update_cancel',
+    '#submit' => array('date_repeat_entity_update_dates_cancel'),
+    '#validate' => array(),
+    '#weight' => $button_weight,
+  );
+
+
   // Determine if there any related date entities that will be affected by
   // update.
-  
-  
-  
+
+
+
 }
 
 /**
@@ -168,6 +180,7 @@ function date_repeat_entity_submit_handler($form, &$form_state) {
     unset($form['#node']->in_preview);
   }
 
+  // Set node confirmation status.
   $form_state['node_confirmation'] = TRUE;
   $form_state['rebuild'] = TRUE;
 }
@@ -197,9 +210,19 @@ function date_repeat_entity_update_dates($form, &$form_state) {
   drupal_set_message($trigger);
 }
 
+function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
+
+  // Remove update buttons fieldset.
+  unset($form['update-buttons']);
+
+  // Reset node confirmation status.
+  $form_state['node_confirmation'] = FALSE;
+  $form_state['rebuild'] = TRUE;
+}
+
 /**
  * Implements hook_entity_presave().
- * 
+ *
  * When a new entity is created we need this hook because it is called
  * after the entity object is created but before it is saved to the database.
  * (Updates to existing entities will be managed through submit handlers.)
@@ -231,9 +254,9 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
       _create_dates($entity, $entity_type);
     }
     else {
-      
+
       // TODO: implement
-      // 
+      //
       // the function will have to delete future/all entities and then recreate
       // a new series with new master_uuid
       //_update_dates($entity, $entity_type);
