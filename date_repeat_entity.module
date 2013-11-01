@@ -161,11 +161,11 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   );
 
 
-  // Determine if there any related date entities that will be affected by
+  // Determine if there any references entities that will be affected by
   // update.
+  $referenced_entities = get_referenced_entities($form, $form_state);
 
-
-
+  $ief_entities = $form_state['inline_entity_form'][$ief_id]['entities'];
 }
 
 /**
@@ -207,7 +207,13 @@ function date_repeat_entity_update_dates($form, &$form_state) {
   // property.
   $form_state['values']['date_repeat_entity']['triggering_element'] = $trigger;
 
-  drupal_set_message($trigger);
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
+
+  // Determine if the repeating date has materially changed.
+  $form_state['values']['date_repeat_entity']['repeating_date_has_changed'] = _repeating_date_has_changed($form, $form_state);
+
+  //drupal_set_message($trigger);
 }
 
 function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
@@ -251,7 +257,7 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
 
   if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
     if ($entity->is_new) {
-      _create_dates($entity, $entity_type);
+      create_dates($entity, $entity_type);
     }
     else {
 
@@ -259,7 +265,7 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
       //
       // the function will have to delete future/all entities and then recreate
       // a new series with new master_uuid
-      //_update_dates($entity, $entity_type);
+      update_dates($entity, $entity_type);
     }
   }
 }
@@ -281,7 +287,7 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
-  // Make sure repeating date update functions are available.
+  // Make sure repeating date delete functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
 
   // Check if the form contains a repeating date field.
@@ -342,4 +348,31 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
     $form['actions']['#href'] = 'node/' . $nid . '/edit';
     $form['actions']['cancel']['#weight'] = 40;
   }
+}
+
+function get_referenced_entities($form, $form_state) {
+
+  $referenced_entities = array();
+
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+
+  $entity_type = $form['#entity_type'];
+  $bundle = $form['#bundle'];
+
+  // Get an array of field objects which are entity reference types . 
+  $entity_reference_fields = _get_entity_reference_fields($entity_type, $bundle);
+
+  // For each field object get number of instances
+  
+ 
+  // If the inline entity form widget is being used to control entity
+  // references check how many entities are attached to it.
+  foreach ($form_state['inline_entity_form'] as $ief_id) {
+    foreach ($ief_id['entities'] as $ief_entity) {
+      $referenced_entities[] = $ief_entity;
+    }
+  }
+  return $referenced_entities;
+  
 }
