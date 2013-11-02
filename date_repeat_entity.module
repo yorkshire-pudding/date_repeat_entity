@@ -163,9 +163,15 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
 
   // Determine if there any references entities that will be affected by
   // update.
-  $referenced_entities = get_referenced_entities($form, $form_state);
+  $number_of_referenced_entities = get_number_of_referenced_entities($form, $form_state);
+  if (isset($number_of_referenced_entities) && $number_of_referenced_entities > 0) {
+      $message = t(
+          'There are @num_entities referenced entities that will be affected by this update',
+          array('@num_entities' => $number_of_referenced_entities));
+      $type = 'warning';
+      drupal_set_message($message, $type);
+  }
 
-  $ief_entities = $form_state['inline_entity_form'][$ief_id]['entities'];
 }
 
 /**
@@ -350,9 +356,9 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
   }
 }
 
-function get_referenced_entities($form, $form_state) {
+function get_number_of_referenced_entities($form, $form_state) {
 
-  $referenced_entities = array();
+  $number_of_referenced_entities = 0;
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
@@ -360,19 +366,41 @@ function get_referenced_entities($form, $form_state) {
   $entity_type = $form['#entity_type'];
   $bundle = $form['#bundle'];
 
-  // Get an array of field objects which are entity reference types . 
+  // Get an array of field objects which are entity reference types.
   $entity_reference_fields = _get_entity_reference_fields($entity_type, $bundle);
 
-  // For each field object get number of instances
-  
- 
-  // If the inline entity form widget is being used to control entity
-  // references check how many entities are attached to it.
-  foreach ($form_state['inline_entity_form'] as $ief_id) {
-    foreach ($ief_id['entities'] as $ief_entity) {
-      $referenced_entities[] = $ief_entity;
+  // Loop over entity reference field instances to get number of
+  // referenced entities.
+  foreach ($entity_reference_fields as $field) {
+
+    // Get field name.
+    $field_name = $field['field_name'];
+
+    // Get meta data properties of the field instance.
+    $info = field_info_instance($entity_type, $field_name, $bundle);
+
+    // Methods of retrieving child entities depend on widget type.
+    switch ($info['widget']['type']) {
+
+      case 'inline_entity_form':
+        // An inline entity form widget is being used for this instance.
+        // The IEF entities are stored in a specific branch of the form_state
+        // array.
+        $ief_id = $info['id'];
+        // If the inline entity form widget is being used to control entity
+        // references check how many entities are attached to it.
+        foreach ($form_state['inline_entity_form'][$ief_id]['entities'] as $ief_entity) {
+          $number_of_referenced_entities++;
+        }
+        break;
+      default:
+        // Other widgets store referenced field entities in the form_state values
+        // array.
+        foreach ($form_state['values'][$field_name][LANGUAGE_NONE] as $target_entity) {
+          $number_of_referenced_entities++;
+        }
     }
   }
-  return $referenced_entities;
-  
+
+  return $number_of_referenced_entities;
 }
