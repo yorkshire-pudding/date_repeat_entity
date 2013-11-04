@@ -107,71 +107,90 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     '#weight' => $fieldset_weight,
   );
 
-  $button_weight = 0;
+  $update_buttons_element_weight = 0;
+
+  // Determine if there any references entities that will be affected by
+  // update.
+  $referenced_entities = get_referenced_entities($form, $form_state);
+  if (!empty($referenced_entities)) {
+
+    // Create a warning message.
+    $referenced_entities_message = "";
+    foreach ($referenced_entities as $referenced_entity) {
+
+      $number_of_reference_entities = $referenced_entity['number_of_referenced_entities'];
+      $entity_label = $referenced_entity['entity_label'];
+
+      $referenced_entities_message .= '<p>There ';
+      $referenced_entities_message .= ($number_of_reference_entities > 1) ? 'are ' : 'is ';
+
+      // Print a warning message about the entities that may be affected by update.
+      $referenced_entities_message .= t(
+          '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
+        '@number_of_referenced_entities' => $number_of_reference_entities,
+        '@entity_label' => $entity_label,
+          )
+      );
+      $referenced_entities_message .= '.</p>';
+    }
+
+    // Add markup for warning message to form.
+    $update_buttons_element_weight++;
+    $form['update-buttons']['update-text'] = array(
+      '#markup' => $referenced_entities_message,
+    );
+  }
 
   // Add a fieldset with confirmation buttons.
   // Create button that gives user option of updating current and future
   // dates associated with an entity.  Prepend our callback to the
   // default submit action callbacks.
-  $button_weight++;
+  $update_buttons_element_weight++;
   $form['update-buttons']['update-current'] = array(
     '#type' => 'submit',
     '#value' => t('Update current'),
     '#name' => 'update_current',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
-    '#weight' => $button_weight,
+    '#weight' => $update_buttons_element_weight,
   );
 
   // Create button that gives user option of updating current and future
   // dates associated with an entity.  Prepend our callback to the
   // default submit action callbacks.
-  $button_weight++;
+  $update_buttons_element_weight++;
   $form['update-buttons']['update-future'] = array(
     '#type' => 'submit',
     '#value' => t('Update all following'),
     '#name' => 'update_future',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
-    '#weight' => $button_weight,
+    '#weight' => $update_buttons_element_weight,
   );
 
   // Create button that gives user option of updating all dates associated
   // with an entity.  Prepend our callback to the default submit action
   // callbacks.
-  $button_weight++;
+  $update_buttons_element_weight++;
   $form['update-buttons']['update-all'] = array(
     '#type' => 'submit',
     '#value' => t('Update all events in the series'),
     '#name' => 'update_all',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
-    '#weight' => $button_weight,
+    '#weight' => $update_buttons_element_weight,
   );
 
   // Create button that gives user option of cancelling updates
-  $button_weight++;
+  $update_buttons_element_weight++;
   $form['update-buttons']['update-cancel'] = array(
     '#type' => 'submit',
     '#value' => t('Cancel update'),
     '#name' => 'update_cancel',
     '#submit' => array('date_repeat_entity_update_dates_cancel'),
     '#validate' => array(),
-    '#weight' => $button_weight,
+    '#weight' => $update_buttons_element_weight,
   );
-
-
-  // Determine if there any references entities that will be affected by
-  // update.
-  $number_of_referenced_entities = get_number_of_referenced_entities($form, $form_state);
-  if (isset($number_of_referenced_entities) && $number_of_referenced_entities > 0) {
-      $message = t(
-          'There are @num_entities referenced entities that will be affected by this update',
-          array('@num_entities' => $number_of_referenced_entities));
-      $type = 'warning';
-      drupal_set_message($message, $type);
-  }
-
 }
 
 /**
@@ -356,9 +375,12 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
   }
 }
 
-function get_number_of_referenced_entities($form, $form_state) {
+function get_referenced_entities($form, $form_state) {
 
-  $number_of_referenced_entities = 0;
+  $test_info = field_info_instance('node', 'field_user', 'event_participant');
+
+
+  $referenced_entities = array();
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
@@ -379,6 +401,9 @@ function get_number_of_referenced_entities($form, $form_state) {
     // Get meta data properties of the field instance.
     $info = field_info_instance($entity_type, $field_name, $bundle);
 
+    // Reset entity counter
+    $number_of_referenced_entities = 0;
+
     // Methods of retrieving child entities depend on widget type.
     switch ($info['widget']['type']) {
 
@@ -397,10 +422,21 @@ function get_number_of_referenced_entities($form, $form_state) {
         // Other widgets store referenced field entities in the form_state values
         // array.
         foreach ($form_state['values'][$field_name][LANGUAGE_NONE] as $target_entity) {
-          $number_of_referenced_entities++;
+          if (!is_null($target_entity['target_id'])) {
+            $number_of_referenced_entities++;
+          }
         }
+    }
+
+    // Add to the array of referenced entities if any were identified.
+    if ($number_of_referenced_entities > 0) {
+
+      $referenced_entities[] = array(
+        'entity_label' => $info['label'],
+        'number_of_referenced_entities' => $number_of_referenced_entities,
+      );
     }
   }
 
-  return $number_of_referenced_entities;
+  return $referenced_entities;
 }

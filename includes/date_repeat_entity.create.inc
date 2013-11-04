@@ -9,7 +9,7 @@
 /**
  * Clones new entities that are part of a repeating date series.
  */
-function _create_dates($entity, $entity_type) {
+function create_dates($entity, $entity_type) {
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
@@ -29,7 +29,7 @@ function _create_dates($entity, $entity_type) {
     // any time but the field_clone_state is part of the event bundle so
     // we need to test for the 'event' bundle type.
     if ($bundle === 'event') {
-      
+
       // Get value of clone state - a new event node will have the default state
       // of FALSE while a cloned event node will have a state of TRUE.
       $field_clone_state = $wrapper->field_clone_state->value();
