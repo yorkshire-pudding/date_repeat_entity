@@ -245,3 +245,37 @@ function _get_entity_reference_fields($entity_type, $bundle) {
   }
   return $entity_reference_fields;
 }
+
+/**
+ * Gets an array of entity ids with the same master uuid.
+ * 
+ * @param type $entity_type
+ * @param type $bundle
+ * @param type $master_uuid
+ * 
+ * @return array of entity ids
+ */
+function _get_related_entity_ids($entity_type, $bundle, $master_uuid){
+
+$date_entity_ids = array();
+  
+ // Use EFQ to get all dates with the same field_master_uuid value.
+  $query = new EntityFieldQuery();
+
+  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  $query->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', $bundle)
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+
+  // Retrieve matching entities.
+  $result = $query->execute();
+
+  // If query successful, update retrieved entities.
+  if (isset($result[$entity_type])) {
+
+    // Build an array of entity ids for for the entity type.
+    $date_entity_ids = array_keys($result[$entity_type]);
+  }
+  
+  return $date_entity_ids;
+}

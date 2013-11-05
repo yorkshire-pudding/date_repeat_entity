@@ -46,7 +46,6 @@ function create_dates($entity, $entity_type) {
           // Create a clone of the entity for each date instance in the series
           // except the first, which will be saved though the submit handler
           // on the node edit form itself.
-          if ($entity->is_new) {
 
             // Get the UUID from the master (original) date.
             $master_uuid = $wrapper->uuid->value();
@@ -99,12 +98,11 @@ function create_dates($entity, $entity_type) {
             // Remove all items from the master entity's field array
             // except the first.
             array_splice($entity->field_date[$entity->language], 1);
-          }
         }
       }
     }
   }
 
   // Reset the flag for clone state, just before saving the entity.
-  $entity->field_clone_state = FALSE;
+  $wrapper->field_clone_state = FALSE;
 }

@@ -126,14 +126,14 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
 
       // Print a warning message about the entities that may be affected by update.
       $referenced_entities_message .= t(
-          '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
+        '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
         '@number_of_referenced_entities' => $number_of_reference_entities,
         '@entity_label' => $entity_label,
           )
       );
       $referenced_entities_message .= '.</p>';
     }
-
+    
     // Add markup for warning message to form.
     $update_buttons_element_weight++;
     $form['update-buttons']['update-text'] = array(
@@ -141,45 +141,63 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     );
   }
 
-  // Add a fieldset with confirmation buttons.
   // Create button that gives user option of updating current and future
   // dates associated with an entity.  Prepend our callback to the
   // default submit action callbacks.
   $update_buttons_element_weight++;
   $form['update-buttons']['update-current'] = array(
     '#type' => 'submit',
-    '#value' => t('Update current'),
+    '#value' => t('Update'),
     '#name' => 'update_current',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
     '#weight' => $update_buttons_element_weight,
   );
 
-  // Create button that gives user option of updating current and future
-  // dates associated with an entity.  Prepend our callback to the
-  // default submit action callbacks.
-  $update_buttons_element_weight++;
-  $form['update-buttons']['update-future'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update all following'),
-    '#name' => 'update_future',
-    '#submit' => $submit_callbacks,
-    '#validate' => array(),
-    '#weight' => $update_buttons_element_weight,
-  );
+  // Get the ids of all entities with same master uuid.
+  $entity_type = $form['#entity_type'];
+  $bundle = $form['#bundle'];
+  $entity = $form['#entity'];
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+  
+  // Get the master uuid value.
+  $master_uuid = $wrapper->field_master_uuid->value();
+  
+  // Get related ids
+  $related_entity_ids = _get_related_entity_ids($entity_type, $bundle, $master_uuid);
 
-  // Create button that gives user option of updating all dates associated
-  // with an entity.  Prepend our callback to the default submit action
-  // callbacks.
-  $update_buttons_element_weight++;
-  $form['update-buttons']['update-all'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update all events in the series'),
-    '#name' => 'update_all',
-    '#submit' => $submit_callbacks,
-    '#validate' => array(),
-    '#weight' => $update_buttons_element_weight,
-  );
+  // If there are related entities we need to give options to user.
+  if (count($related_entity_ids) > 1) {
+
+    // Update default save confirmation button.
+    $form['update-buttons']['update-current']['#value'] = t('Update current');
+
+    // Create button that gives user option of updating current and future
+    // dates associated with an entity.  Prepend our callback to the
+    // default submit action callbacks.
+    $update_buttons_element_weight++;
+    $form['update-buttons']['update-future'] = array(
+      '#type' => 'submit',
+      '#value' => t('Update all following'),
+      '#name' => 'update_future',
+      '#submit' => $submit_callbacks,
+      '#validate' => array(),
+      '#weight' => $update_buttons_element_weight,
+    );
+
+    // Create button that gives user option of updating all dates associated
+    // with an entity.  Prepend our callback to the default submit action
+    // callbacks.
+    $update_buttons_element_weight++;
+    $form['update-buttons']['update-all'] = array(
+      '#type' => 'submit',
+      '#value' => t('Update all events in the series'),
+      '#name' => 'update_all',
+      '#submit' => $submit_callbacks,
+      '#validate' => array(),
+      '#weight' => $update_buttons_element_weight,
+    );
+  }
 
   // Create button that gives user option of cancelling updates
   $update_buttons_element_weight++;
@@ -256,7 +274,6 @@ function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
  *
  * When a new entity is created we need this hook because it is called
  * after the entity object is created but before it is saved to the database.
- * (Updates to existing entities will be managed through submit handlers.)
  */
 function date_repeat_entity_entity_presave($entity, $entity_type) {
 
@@ -376,9 +393,6 @@ function date_repeat_entity_form_node_delete_confirm_alter(&$form, &$form_state,
 }
 
 function get_referenced_entities($form, $form_state) {
-
-  $test_info = field_info_instance('node', 'field_user', 'event_participant');
-
 
   $referenced_entities = array();
 
