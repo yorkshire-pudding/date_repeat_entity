@@ -46,58 +46,57 @@ function create_dates($entity, $entity_type) {
           // Create a clone of the entity for each date instance in the series
           // except the first, which will be saved though the submit handler
           // on the node edit form itself.
+          // Get the UUID from the master (original) date.
+          $master_uuid = $wrapper->uuid->value();
 
-            // Get the UUID from the master (original) date.
-            $master_uuid = $wrapper->uuid->value();
+          // Assign the UUID to the master UUID field.
+          // Give the original entity a reference to its own UUID.
+          // This will be needed for any updates of the recurring date series.
+          $wrapper->field_master_uuid = $master_uuid;
 
-            // Assign the UUID to the master UUID field.
-            // Give the original entity a reference to its own UUID.
-            // This will be needed for any updates of the recurring date series.
-            $wrapper->field_master_uuid = $master_uuid;
+          // Get an array of field data for the current entity.
+          $field_name = $repeating_date_field['field_name'];
+          $field_data = field_get_items($entity_type, $entity, $field_name);
 
-            // Get an array of field data for the current entity.
-            $field_name = $repeating_date_field['field_name'];
-            $field_data = field_get_items($entity_type, $entity, $field_name);
+          // Create a new set of dates by removing the first item in
+          // the array - since it is the original (master) entity.
+          array_shift($field_data);
 
-            // Create a new set of dates by removing the first item in
-            // the array - since it is the original (master) entity.
-            array_shift($field_data);
+          // Clone a new entity for each date in series
+          // (except original entity).
+          foreach ($field_data as $delta => $datum) {
 
-            // Clone a new entity for each date in series
-            // (except original entity).
-            foreach ($field_data as $delta => $datum) {
+            // Clone entity.
+            $clone_entity = replicate_clone_entity($entity_type, $entity);
 
-              // Clone entity.
-              $clone_entity = replicate_clone_entity($entity_type, $entity);
+            // Get entity wrapper for the cloned node.
+            $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
 
-              // Get entity wrapper for the cloned node.
-              $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
+            // Flag the node as cloned.
+            $clone_wrapper->field_clone_state = TRUE;
 
-              // Flag the node as cloned.
-              $clone_wrapper->field_clone_state = TRUE;
+            // Give the cloned entity a reference to the master UUID.
+            $clone_wrapper->field_master_uuid = $master_uuid;
 
-              // Give the cloned entity a reference to the master UUID.
-              $clone_wrapper->field_master_uuid = $master_uuid;
+            // Reset the UUID, version UUID and version log string
+            // of the cloned entity to differentiate from the
+            // original entity.
+            $clone_entity->uuid = NULL;
+            $clone_entity->vuuid = NULL;
+            $clone_entity->log = "cloned from uuid : " . $master_uuid;
 
-              // Reset the UUID, version UUID and version log string
-              // of the cloned entity to differentiate from the
-              // original entity.
-              $clone_entity->uuid = NULL;
-              $clone_entity->vuuid = NULL;
-              $clone_entity->log = "cloned from uuid : " . $master_uuid;
+            // Replace field array with the row that matches the
+            // current delta.  Need to add an offset of 1 to delta
+            // because delta values are shifted when we applied
+            // array_shift to field_data.
+            $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
 
-              // Replace field array with the row that matches the
-              // current delta.  Need to add an offset of 1 to delta
-              // because delta values are shifted when we applied
-              // array_shift to field_data.
-              $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
-
-              // Save the cloned entity.
-              entity_save($entity_type, $clone_entity);
-            }
-            // Remove all items from the master entity's field array
-            // except the first.
-            array_splice($entity->field_date[$entity->language], 1);
+            // Save the cloned entity.
+            entity_save($entity_type, $clone_entity);
+          }
+          // Remove all items from the master entity's field array
+          // except the first.
+          array_splice($entity->field_date[$entity->language], 1);
         }
       }
     }
@@ -106,3 +105,4 @@ function create_dates($entity, $entity_type) {
   // Reset the flag for clone state, just before saving the entity.
   $wrapper->field_clone_state = FALSE;
 }
+

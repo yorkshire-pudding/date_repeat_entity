@@ -60,14 +60,14 @@ function delete_future_dates($form, &$form_state) {
 
   // Get the series master UUID.
   $master_uuid = $entity_wrapper->field_master_uuid->value();
-  
+
   // Get the repeating field date values.
-    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
   $repeating_date_field_name = $repeating_date_field['field_name'];
-  
+
   $field_data = $entity_wrapper->{$repeating_date_field_name}[0]->raw();
   $date_start_value = $field_data['value'];
-  $repeating_date_operation_successful = _delete_future_dates($entity_type, $bundle, $master_uuid, $date_start_value);
+  $repeating_date_operation_successful = _delete_future_dates($entity_type, $bundle, NULL, $master_uuid, $date_start_value);
 
   if ($repeating_date_operation_successful) {
     // We still need to delete the original
@@ -77,7 +77,6 @@ function delete_future_dates($form, &$form_state) {
   // Redirect to front page.
   $form_state['redirect'] = '<front>';
 }
-
 
 /**
  * Delete the current date only.
@@ -146,6 +145,8 @@ function _delete_all_dates($entity_type = 'node', $bundle = 'event', $master_uui
  *   An entity type e.g. node.
  * @param string $bundle
  *   A bundle type e.g. event.
+ * @param int $entity_id
+ *   Entity id
  * @param string $master_uuid
  *   the alphanumeric master_uuid.
  * @param string start date from which all future dates will be deleted.
@@ -153,7 +154,7 @@ function _delete_all_dates($entity_type = 'node', $bundle = 'event', $master_uui
  * @return bool
  *   the sucess of this functioon is represented by this value.
  */
-function _delete_future_dates($entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $start_date = NULL) {
+function _delete_future_dates($entity_type = 'node', $bundle = 'event', $entity_id = NULL, $master_uuid = NULL, $start_date = NULL) {
 
 
   // Instantiate boolean variable to track success of operation.
@@ -167,9 +168,19 @@ function _delete_future_dates($entity_type = 'node', $bundle = 'event', $master_
       ->entityCondition('bundle', $bundle)
       // Note: exclude current entity because it will be deleted as part of the
       // hook_entity_delete function that calls this one.
-      //->propertyCondition('nid', $entity_id, '<>')
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid)
-      ->fieldCondition('field_date', 'value', $start_date, '>=');
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+
+  // If a start date is passed to function, add field condition to 
+  // exclude earlier entities from the query;
+  if (!is_null($start_date)) {
+    $query->fieldCondition('field_date', 'value', $start_date, '>=');
+  }
+
+  // If an entity id is passed to function, add property conditon to 
+  // exclude an entity from the query
+  if (!is_null($entity_id)) {
+    $query->propertyCondition('nid', $entity_id, '<>');
+  }
 
   // Retrieve matching entities.
   $result = $query->execute();

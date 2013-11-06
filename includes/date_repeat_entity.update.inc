@@ -110,9 +110,10 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
   $entity->uuid = $master_uuid_new;
   $entity->vuuid = $master_uuid_new;
   //$entity->is_new = TRUE;
+  $entity_id = $entity_wrapper->getIdentifier();
 
   create_dates($entity, $entity_type);
-  
+
   if (1 == 2) {
 
     // Placeholder variable for a new master entity that is created as part of a 
@@ -212,19 +213,24 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
         $new_master_entity = $clone_entity;
       }
     }
-  }
 
-  // Define dates associated with the former UUID.
-  switch ($scope) {
-    case 'all':
-      // Delete all associated with the former UUID
-      _delete_all_dates($entity_type, $bundle, $master_uuid);
-      break;
-    case 'future':
-      // Delete all current and future dates associated with the former UUID
-      _delete_future_dates($entity_type, $bundle, $master_uuid, $new_date_start_value);
-      break;
+    // Define dates associated with the former UUID.
+    switch ($scope) {
+      case 'all':
+        // Delete all associated with the former UUID
+        _delete_all_dates($entity_type, $bundle, $master_uuid);
+        break;
+      case 'future':
+        // Delete all current and future dates associated with the former UUID
+        _delete_future_dates($entity_type, $bundle, $entity->entity_id, $master_uuid, $new_date_start_value);
+        break;
+    }
   }
+  
+  // Make sure repeating date delete functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
+  
+  _delete_future_dates($entity_type, $bundle, $entity_id, $master_uuid, NULL);
 
   return $entity;
 }

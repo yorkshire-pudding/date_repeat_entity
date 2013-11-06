@@ -35,7 +35,7 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
     if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL
     ) {
 
-      // Hide the clone state from the event edit form.
+      // Hide the clon/e state from the event edit form.
       if (isset($form['field_clone_state'])) {
         $form['field_clone_state']['#access'] = FALSE;
       }

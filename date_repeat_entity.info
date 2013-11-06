@@ -10,78 +10,11 @@ dependencies[] = uuid
 package = Date/Time
 core = 7.x
 
-;files[] = tests/date_repeat_entity.test
-
 ; stylesheets
-; TODO: refine application of CSS to only pages that require it
 stylesheets[all][] = date_repeat_entity.css
-
-
-; Information added by drush on 2013-09-27
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1380302246"
-
-
-
-; Information added by drush on 2013-09-30
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1380559509"
-
-
-
-; Information added by drush on 2013-10-01
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1380667709"
-
-
-
-; Information added by drush on 2013-10-02
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1380774418"
-
-
-
-; Information added by drush on 2013-10-03
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1380821979"
-
-
-
-; Information added by drush on 2013-10-07
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1381200298"
-
-
-
-; Information added by drush on 2013-10-11
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1381509815"
-
-
-
-; Information added by drush on 2013-10-15
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1381855103"
-
-
 
 ; Information added by drush on 2013-10-29
 version = "master-dev"
 project = "date_repeat_entity"
 datestamp = "1383065498"
-
-
-
-; Information added by drush on 2013-11-04
-version = "master-dev"
-project = "date_repeat_entity"
-datestamp = "1383587237"
 
