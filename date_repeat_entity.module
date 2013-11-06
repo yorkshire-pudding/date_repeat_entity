@@ -57,17 +57,27 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
           array_unshift($form['actions']['preview_changes']['#submit'], 'date_repeat_entity_preview_handler');
         }
 
-        // Store the form's default submit action callbacks.
-        if (!isset($form_state['default_submit_callbacks'])) {
-          $form_state['default_submit_callbacks'] = $form['actions']['submit']['#submit'];
+        // Store the form's default submit action callbacks for node updates.
+        if (!isset($form_state['default_update_callbacks'])) {
+          $form_state['default_update_callbacks'] = $form['actions']['submit']['#submit'];
         }
 
         // Change callback for submit button
-        $form['actions']['submit']['#submit'] = array('date_repeat_entity_submit_handler');
+        $form['actions']['submit']['#submit'] = array('date_repeat_entity_update_submit_handler');
 
+        // Store the form's default delete action callbacks.
+        if (!isset($form_state['default_delete_callbacks'])) {
+          //$form_state['default_delete_callbacks'] = $form['actions']['delete']['#submit'];
+          // Note: use empty array because we don't actually want to keep the default
+          // submit handler that redirects to the node delete confirmation form.
+          $form_state['default_delete_callbacks'] = array();//$form['actions']['delete']['#submit'];
+        }
+        
+        // Change callback for delete button
+        $form['actions']['delete']['#submit'] = array('date_repeat_entity_delete_submit_handler');
+        
         // Check if form is in save confirmation state:
-        // i.e. $form_state['node_confirmation'] == TRUE.
-        if (!empty($form_state['node_confirmation']) && $form_state['node_confirmation'] == TRUE) {
+        if (isset($form_state['node_confirmation_action'])) {
 
           // Add fieldset containing confirmation buttons.
           add_confirmation_button_fieldset($form, $form_state);
@@ -85,11 +95,13 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
  */
 function add_confirmation_button_fieldset(&$form, $form_state) {
 
+  $action = $form_state['node_confirmation_action'];
+  
   // Get the default submit callbacks.
-  $submit_callbacks = $form_state['default_submit_callbacks'];
+  $submit_callbacks = $form_state['default_' .$action . '_callbacks'];
 
   // Prepend a callback to submit_callbacks.
-  array_unshift($submit_callbacks, 'date_repeat_entity_update_dates');
+  array_unshift($submit_callbacks, 'date_repeat_entity_' .$action . '_dates');
 
   // Get title field weight because we want our fieldset
   // and its confirmation buttons to be above the form title,
@@ -103,7 +115,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   // Define the fieldset
   $form['update-buttons'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Confirm save'),
+    '#title' => t('Confirm ' . $action),
     '#weight' => $fieldset_weight,
   );
 
@@ -147,7 +159,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   $update_buttons_element_weight++;
   $form['update-buttons']['update-current'] = array(
     '#type' => 'submit',
-    '#value' => t('Update'),
+    '#value' => $action,
     '#name' => 'update_current',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
@@ -170,7 +182,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   if (count($related_entity_ids) > 1) {
 
     // Update default save confirmation button.
-    $form['update-buttons']['update-current']['#value'] = t('Update current');
+    $form['update-buttons']['update-current']['#value'] = $action . t(' current');
 
     // Create button that gives user option of updating current and future
     // dates associated with an entity.  Prepend our callback to the
@@ -178,7 +190,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     $update_buttons_element_weight++;
     $form['update-buttons']['update-future'] = array(
       '#type' => 'submit',
-      '#value' => t('Update all following'),
+      '#value' => $action . t(' all following'),
       '#name' => 'update_future',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
@@ -191,7 +203,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     $update_buttons_element_weight++;
     $form['update-buttons']['update-all'] = array(
       '#type' => 'submit',
-      '#value' => t('Update all events in the series'),
+      '#value' => $action . t(' all events in the series'),
       '#name' => 'update_all',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
@@ -203,7 +215,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   $update_buttons_element_weight++;
   $form['update-buttons']['update-cancel'] = array(
     '#type' => 'submit',
-    '#value' => t('Cancel update'),
+    '#value' => t('cancel ' . $action),
     '#name' => 'update_cancel',
     '#submit' => array('date_repeat_entity_update_dates_cancel'),
     '#validate' => array(),
@@ -212,9 +224,23 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
 }
 
 /**
- * Submit handler for the 'submit' action.
+ * Submit handler for the 'submit' action (on existing nodes).
  */
-function date_repeat_entity_submit_handler($form, &$form_state) {
+function date_repeat_entity_update_submit_handler($form, &$form_state) {
+  date_repeat_entity_submit_handler($form, $form_state, 'update');
+}
+
+/**
+ * Submit handler for the 'delete' action.
+ */
+function date_repeat_entity_delete_submit_handler($form, &$form_state) {
+  date_repeat_entity_submit_handler($form, $form_state, 'delete');
+}
+
+/**
+ * Submit handler for the 'submit' and 'delete' actions.
+ */
+function date_repeat_entity_submit_handler($form, &$form_state, $action) {
 
   // Remove preview markup if form was in preview mode.
   if (isset($form_state['node_preview'])) {
@@ -224,9 +250,9 @@ function date_repeat_entity_submit_handler($form, &$form_state) {
   }
 
   // Set node confirmation status.
-  $form_state['node_confirmation'] = TRUE;
+  $form_state['node_confirmation_action'] = $action;
   $form_state['rebuild'] = TRUE;
-}
+}        
 
 /**
  * Submit handler for the 'preview' action.
@@ -234,15 +260,16 @@ function date_repeat_entity_submit_handler($form, &$form_state) {
 function date_repeat_entity_preview_handler($form, &$form_state) {
 
   // Remove node confirmation from form state.
-  if (isset($form_state['node_confirmation'])) {
-    unset($form_state['node_confirmation']);
+  if (isset($form_state['node_confirmation_action'])) {
+    unset($form_state['node_confirmation_action']);
   }
 }
 
 function date_repeat_entity_update_dates($form, &$form_state) {
 
-  $form_state['node_confirmation'] = FALSE;
-  //$form_state['rebuild'] = TRUE;
+  $form_state['values']['date_repeat_entity']['action'] = $form_state['node_confirmation_action'];
+  
+  unset($form_state['node_confirmation_action']);
 
   $trigger = $form_state['triggering_element']['#name'];
 
@@ -255,8 +282,27 @@ function date_repeat_entity_update_dates($form, &$form_state) {
 
   // Determine if the repeating date has materially changed.
   $form_state['values']['date_repeat_entity']['repeating_date_has_changed'] = _repeating_date_has_changed($form, $form_state);
+}
 
-  //drupal_set_message($trigger);
+function date_repeat_entity_delete_dates($form, &$form_state) {
+
+  $form_state['values']['date_repeat_entity']['action'] = $form_state['node_confirmation_action'];
+  
+  unset($form_state['node_confirmation_action']);
+
+  $trigger = $form_state['triggering_element']['#name'];
+
+  // Store the name of the button that was pressed in a form_state values
+  // property.
+  $form_state['values']['date_repeat_entity']['triggering_element'] = $trigger;
+
+  // Make sure repeating date delete functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
+  
+  // Get entity 
+  $entity_type = 'node';
+  delete_dates($form['#entity'], $entity_type, $trigger);
+
 }
 
 function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
@@ -264,8 +310,10 @@ function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
   // Remove update buttons fieldset.
   unset($form['update-buttons']);
 
-  // Reset node confirmation status.
-  $form_state['node_confirmation'] = FALSE;
+  // Unset node confirmation status.
+  unset($form_state['node_confirmation_action']);
+  
+  // Rebuild form
   $form_state['rebuild'] = TRUE;
 }
 
@@ -309,6 +357,37 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
       // a new series with new master_uuid
       update_dates($entity, $entity_type);
     }
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ *
+ */
+function date_repeat_entity_entity_delete($entity, $entity_type) {
+  
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+
+  // Make sure repeating date delete functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
+
+  // Get entity wrapper.
+  $wrapper = entity_metadata_wrapper($entity_type, $entity);
+
+  // Get bundle type.
+  $bundle = $wrapper->getBundle();
+
+  // Check if the entity attached to the form has a repeating date field.
+  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+
+  // Check if the entity also has other fields required for this module to
+  // function properly.
+  $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
+  $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+
+  if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
+      //delete_dates($entity, $entity_type);
   }
 }
 

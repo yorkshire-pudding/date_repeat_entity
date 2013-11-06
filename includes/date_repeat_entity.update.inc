@@ -9,10 +9,8 @@
 /**
  * Update all entities related to the one represented by the current form.
  *
- * @param array $form
- *   the current form.
- * @param array $form_state
- *   the current form state.
+ * @param type $entity
+ * @param type $entity_type
  */
 function update_dates($entity, $entity_type) {
 
@@ -103,9 +101,6 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
   // Generate a new master UUID.
   $master_uuid_new = uuid_generate();
 
-  // Define the master UUID field name.
-  $master_uuid_field_name = 'field_master_uuid';
-
   // Change the entity uuid and set its status to new
   $entity->uuid = $master_uuid_new;
   $entity->vuuid = $master_uuid_new;
@@ -113,124 +108,11 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
   $entity_id = $entity_wrapper->getIdentifier();
 
   create_dates($entity, $entity_type);
-
-  if (1 == 2) {
-
-    // Placeholder variable for a new master entity that is created as part of a 
-    // new repeating date series.
-    $new_master_entity = array();
-
-    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-    $repeating_date_field_name = $repeating_date_field['field_name'];
-
-    // Assume that current and future entities means all entities that have a
-    // a start date that is equal to or greater than the start date of the 
-    // current entity.
-    // Make sure repeating date update functions are available.
-    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
-
-//  $language = $date_repeat_entity_form_state['values']['language'];
-//  $new_date_start_value = $date_repeat_entity_form_state['values'][$repeating_date_field_name][$language][0]['value'];
-//  $new_date_end_value = $date_repeat_entity_form_state['values'][$repeating_date_field_name][$language][0]['value2'];
-//  $new_rrule = $date_repeat_entity_form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
-
-    $field_data = $entity_wrapper->{$repeating_date_field_name}[0]->raw();
-    $new_date_start_value = $field_data['value'];
-    $new_date_end_value = $field_data['value2'];
-    $new_rrule = $field_data['rrule'];
-
-    // Get timezone associated with the field instance.
-    $timezone = date_get_timezone($repeating_date_field['settings']['tz_handling']);
-
-    // Create an item array to simulate the field instance structure
-    // used in Date module's Form API functions.
-    $item = array(
-      'value' => $new_date_start_value,
-      'value2' => $new_date_end_value,
-      'timezone' => $timezone);
-
-    // Get new date series based on the new master start and end dates.
-    $new_dates = date_repeat_build_dates($new_rrule, NULL, $repeating_date_field, $item);
-
-    // Generate a new master UUID.
-    $master_uuid_new = uuid_generate();
-
-    // Define the master UUID field name.
-    $master_uuid_field_name = 'field_master_uuid';
-
-    // Clone a new entity for each date in series
-    // (except original entity).
-    foreach ($new_dates as $delta => $datum) {
-
-      // Clone entity.
-      $clone_entity = replicate_clone_entity($entity_type, $entity);
-
-      // Get entity wrapper for the cloned node.
-      $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
-
-      // Flag the node as cloned.
-      $clone_wrapper->field_clone_state = TRUE;
-
-      // Give the cloned entity a reference to the master UUID.
-      $clone_wrapper->field_master_uuid = $master_uuid;
-
-      // Reset the UUID, version UUID and version log string
-      // of the cloned entities to differentiate from the
-      // original entity.  Make the first clone with a delta of 0 the new
-      // master entity and assign it the new UUID values.
-      if ($delta == 0) {
-        // Update the UUID of the new master entity
-        // routine so need to update its UUID.
-        $clone_entity->uuid = $master_uuid_new;
-        $clone_entity->vuuid = $master_uuid_new;
-      }
-      else {
-        $clone_entity->uuid = NULL;
-        $clone_entity->vuuid = NULL;
-      }
-
-      $clone_entity->log = "cloned from uuid : " . $master_uuid;
-
-      $clone_wrapper->title = $entity_wrapper->label();
-
-      // Set the start date.
-      $clone_entity->{$repeating_date_field_name}[$entity->language][0]['value'] = $datum['value'];
-
-      // Set the end date.
-      $clone_entity->{$repeating_date_field_name}[$entity->language][0]['value2'] = $datum['value2'];
-
-      // Set the RRULE field value.
-      $clone_entity->{$repeating_date_field_name}[$entity->language][0]['rrule'] = $datum['rrule'];
-
-      // Update the UUID that defines the date series.
-      $clone_entity->{$master_uuid_field_name}[$entity->language][0]['value'] = $master_uuid_new;
-
-      // Save the cloned entity.
-      entity_save($entity_type, $clone_entity);
-
-      // Get the new entity_id
-      if ($delta == 0) {
-        $new_master_entity = $clone_entity;
-      }
-    }
-
-    // Define dates associated with the former UUID.
-    switch ($scope) {
-      case 'all':
-        // Delete all associated with the former UUID
-        _delete_all_dates($entity_type, $bundle, $master_uuid);
-        break;
-      case 'future':
-        // Delete all current and future dates associated with the former UUID
-        _delete_future_dates($entity_type, $bundle, $entity->entity_id, $master_uuid, $new_date_start_value);
-        break;
-    }
-  }
   
   // Make sure repeating date delete functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
   
-  _delete_future_dates($entity_type, $bundle, $entity_id, $master_uuid, NULL);
+  _delete_dates($entity_type, $bundle, $entity_id, $master_uuid, NULL);
 
   return $entity;
 }
