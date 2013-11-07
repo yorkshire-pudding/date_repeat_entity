@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Contains utility functions that support operations on entities with
@@ -176,23 +177,23 @@ function _get_field($entity_type, $bundle, $name) {
   // Loop through the fields.
   foreach ($fields as $field_name => $field) {
 
-      // Loop through the entity types associated with this field.
-      foreach ($field['bundles'] as $field_entity_type => $bundles) {
+    // Loop through the entity types associated with this field.
+    foreach ($field['bundles'] as $field_entity_type => $bundles) {
 
-        // Loop through the bundles (content types - in the case of node
-        // entity types) associated with this entity type.
-        foreach ($bundles as $field_bundle) {
+      // Loop through the bundles (content types - in the case of node
+      // entity types) associated with this entity type.
+      foreach ($bundles as $field_bundle) {
 
-          // If the entity type, bundle and field name passed to this function
-          // are the same as the entity type and bundle of the field then
-          // we have a match.
-          if ($entity_type == $field_entity_type &&
-              $bundle == $field_bundle &&
-              $name == $field_name) {
-            $field_match = $field;
-          }
+        // If the entity type, bundle and field name passed to this function
+        // are the same as the entity type and bundle of the field then
+        // we have a match.
+        if ($entity_type == $field_entity_type &&
+            $bundle == $field_bundle &&
+            $name == $field_name) {
+          $field_match = $field;
         }
       }
+    }
   }
   return $field_match;
 }
@@ -224,7 +225,7 @@ function _get_entity_reference_fields($entity_type, $bundle) {
   foreach ($fields as $field) {
 
     // Check if the field is an entity reference date field.
-    if (in_array($field['type'], array('entityreference')) ) {
+    if (in_array($field['type'], array('entityreference'))) {
 
       // Loop through the entity types associated with this field.
       foreach ($field['bundles'] as $field_entity_type => $bundles) {
@@ -255,11 +256,11 @@ function _get_entity_reference_fields($entity_type, $bundle) {
  * 
  * @return array of entity ids
  */
-function _get_related_entity_ids($entity_type, $bundle, $master_uuid){
+function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
 
-$date_entity_ids = array();
-  
- // Use EFQ to get all dates with the same field_master_uuid value.
+  $date_entity_ids = array();
+
+  // Use EFQ to get all dates with the same field_master_uuid value.
   $query = new EntityFieldQuery();
 
   // Define EFQ conditions based on the entity type, bundle and master_uuid.
@@ -276,6 +277,55 @@ $date_entity_ids = array();
     // Build an array of entity ids for for the entity type.
     $date_entity_ids = array_keys($result[$entity_type]);
   }
-  
+
   return $date_entity_ids;
+}
+
+function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+
+  // Get the series master UUID.
+  $master_uuid = $entity_wrapper->field_master_uuid->value();
+  
+  // Use EFQ to get all dates with the same field_master_uuid value.
+  $query = new EntityFieldQuery();
+
+  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  $query->entityCondition('entity_type', $entity_type)
+      ->entityCondition('bundle', $bundle)
+      // Note: exclude current entity because it will be deleted as part of the
+      // hook_entity_delete function that calls this one.
+      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+
+  switch ($scope) {
+    case 'all':
+      // Don't add any more conditions
+      break;
+    case 'future':
+      // If scope is 'future' and a start date is passed to function, 
+      // add field condition to exclude earlier entities from the query;
+      $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+      $repeating_date_field_name = $repeating_date_field['field_name'];
+
+      // Retrieve start date for current entity since this is being applied
+      // to all dates by the user.
+      $field_data = $entity_wrapper->{$repeating_date_field_name}[0]->raw();
+      $start_date = $field_data['value'];
+
+      if (!is_null($start_date)) {
+        $query->fieldCondition('field_date', 'value', $start_date, '>=');
+      }
+
+      break;
+    default:
+      // Default is 'current'
+      $entity_id = $entity_wrapper->getIdentifier();
+
+      $query->propertyCondition('nid', $entity_id, '=');
+      break;
+  }
+
+  // Retrieve matching entities.
+  $result = $query->execute();
+
+  return $result;
 }

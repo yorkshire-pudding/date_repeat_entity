@@ -18,11 +18,8 @@ function delete_dates($entity, $entity_type, $scope = 'all') {
   // Get entity wrapper.
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
   $bundle = $entity_wrapper->getBundle();
-  
-  // Get the series master UUID.
-  $master_uuid = $entity_wrapper->field_master_uuid->value();
 
-  $repeating_date_operation_successful = _delete_dates($entity_type, $bundle, NULL, $master_uuid, NULL);
+  $repeating_date_operation_successful = _delete_dates($entity_wrapper, $entity_type, $bundle, $scope);
 
   if ($repeating_date_operation_successful) {
     // We still need to delete the original
@@ -49,35 +46,16 @@ function delete_dates($entity, $entity_type, $scope = 'all') {
  * @return bool
  *   the sucess of this functioon is represented by this value.
  */
-function _delete_dates($entity_type = 'node', $bundle = 'event', $entity_id = NULL, $master_uuid = NULL, $start_date = NULL) {
+function _delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
 
   // Instantiate boolean variable to track success of operation.
   $repeating_date_operation_successful = FALSE;
 
-  // Use EFQ to get all dates with the same field_master_uuid value.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      // Note: exclude current entity because it will be deleted as part of the
-      // hook_entity_delete function that calls this one.
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
-
-  // If a start date is passed to function, add field condition to 
-  // exclude earlier entities from the query;
-  if (!is_null($start_date)) {
-    $query->fieldCondition('field_date', 'value', $start_date, '>=');
-  }
-
-  // If an entity id is passed to function, add property conditon to 
-  // exclude an entity from the query
-  if (!is_null($entity_id)) {
-    $query->propertyCondition('nid', $entity_id, '<>');
-  }
-
-  // Retrieve matching entities.
-  $result = $query->execute();
+  // Make sure utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+  
+  // Get dates
+  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope);
 
   // If query successful, update retrieved entities.
   if (isset($result[$entity_type])) {
