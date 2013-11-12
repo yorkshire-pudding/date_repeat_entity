@@ -11,7 +11,7 @@
  *
  * @param object $entity
  * @param string $entity_type
- * @param string $scope 
+ * @param string $scope
  */
 function delete_dates($entity, $entity_type, $scope = 'all') {
 
@@ -46,16 +46,16 @@ function delete_dates($entity, $entity_type, $scope = 'all') {
  * @return bool
  *   the sucess of this functioon is represented by this value.
  */
-function _delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Instantiate boolean variable to track success of operation.
   $repeating_date_operation_successful = FALSE;
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-  
+
   // Get dates
-  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope);
+  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   // If query successful, update retrieved entities.
   if (isset($result[$entity_type])) {

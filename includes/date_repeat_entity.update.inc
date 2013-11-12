@@ -28,34 +28,44 @@ function update_dates($entity, $entity_type) {
     $repeating_date_has_changed = $entity->date_repeat_entity['repeating_date_has_changed'];
     $bundle = $entity_wrapper->getBundle();
 
-    // Get the series master UUID.
-    $master_uuid = $entity_wrapper->field_master_uuid->value();
-
     // If the repeating date pattern has changed then replace the entities.
     if ($repeating_date_has_changed) {
 
-      // Replace dates and return a new master entity.
-      $new_master_entity = _replace_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope);
+      // Replace dates and replace entity with new master entity properties
+      $entity = _replace_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope);
+
+      // Redirect to new entity
+      //drupal_goto('/node/' + )
     }
     else {
-      // Update future dates
-      _update_dates($entity_wrapper, $entity, $entity_type, $bundle, $master_uuid, $scope);
+      // Update dates
+      _update_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope);
 
       // Since we haven't replaced entity, redirect user to current entity.
       $new_master_entity = $entity;
     }
   }
-  else {
-    // Remove any date field delta values that were created during the save
-    // operation - any existing entities should not have these deltas
-    array_splice($entity->field_date[$entity->language], 1);
-  }
+  // Remove any date field delta values that were created during the save
+  // operation - any existing entities should not have these deltas
+
+  array_splice($entity->field_date[$entity->language], 1);
+
+  // Make sure entity clone state is set to FALSE - this should be normal state
+  $entity_wrapper->field_clone_state = FALSE;
+
 }
 
 /**
  * Replace dates associated with a repeating date series.
  */
 function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+
+  // Clone the entity before the UUID gets changed.
+  // Note: use the clone method rather than replicate_clone_entity which resets
+  // the entity_id.  Also, cannot clone the original wrapper because it still
+  // points to the original entity.
+  $original_entity = clone($entity);
+  $original_entity_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
 
   // Generate a new master UUID.
   $master_uuid_new = uuid_generate();
@@ -70,8 +80,11 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
   // Make sure repeating date delete functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
 
-  // Delete existing date entities that were replaced
-  _delete_dates($entity_wrapper, $entity_type, $bundle, $scope);
+  // Delete original date entities that were replaced
+  // - excluding the current entity date because it will be updated by the save
+  // action that called this function.
+ $exclude_current_entity = TRUE;
+  _delete_dates($original_entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   return $entity;
 }
@@ -79,10 +92,13 @@ function _replace_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle
 /**
  * Update dates associated with a repeating date series.
  */
-function _update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $master_uuid = NULL, $scope = 'current') {
+function _update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
 
-  // Get dates
-  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope);
+  // Get entities in date series
+  // - excluding the current entity date because it will be updated by the save
+  // action that called this function.
+  $exclude_current_entity = TRUE;
+  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   // If query successful, update retrieved entities.
   if (isset($result[$entity_type])) {
@@ -98,12 +114,15 @@ function _update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle 
 
     foreach ($date_entities as $date_entity) {
 
+      // Get a wrapper for the entity.
+      $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
+
       // Update title and any other relevant fields.
-      $date_entity->title = $new_title;
+      $date_entity_wrapper->title = $new_title;
 
       // Set clone state to TRUE so the cloning procedures are skipped
       // when hook_entity_presave is triggered.
-      $date_entity->field_clone_state = TRUE;
+      $date_entity_wrapper->field_clone_state = TRUE;
 
       // Save the entity.
       entity_save($entity_type, $date_entity);
@@ -146,7 +165,7 @@ function _update_current_date_only($date_repeat_entity_form_state, $entity, $ent
  * Determines if an entity with a repeating date has changed.
  *
  * Compares the start date, end date and RRULE of new and old entity.
- * 
+ *
  */
 function _repeating_date_has_changed($form, $form_state) {
 
@@ -214,11 +233,11 @@ function _repeating_date_has_changed($form, $form_state) {
 
 /**
  * Get new date series if an entity with a repeating date has changed.
- * 
+ *
  * Note: this function is not currently used but could be useful if we decide
  * to allow all dates in a series to be shifted based on the revised RRULE,
  * start and end dates of the instance that changed.
- * 
+ *
  * @param type $form_state
  * @param type $entity_id
  * @param type $entity_type

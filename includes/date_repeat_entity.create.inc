@@ -92,7 +92,9 @@ function create_dates($entity, $entity_type) {
             $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
 
             // Save the cloned entity.
-            entity_save($entity_type, $clone_entity);
+            $result = entity_save($entity_type, $clone_entity);
+
+            $test = $result;
           }
           // Remove all items from the master entity's field array
           // except the first.

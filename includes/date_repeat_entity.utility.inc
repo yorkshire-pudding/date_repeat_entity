@@ -8,14 +8,14 @@
 
 /**
  * Returns an entity object from a master uuid.
- * 
+ *
  * @param string $entity_type
  *   the entity type to load, e.g. node.
  * @param string $bundle
  *   the bundle type, e.g. event.
  * @param string $master_uuid
  *   the alphanumeric master_uuid.
- * 
+ *
  * @return object
  *   representing an entity.
  */
@@ -60,7 +60,7 @@ function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uu
  *   the bundle type e.g. event.
  * @param int $entity_id
  *   the entity identifier e.g. node id.
- * 
+ *
  * @return object
  *   representing an array.
  */
@@ -111,7 +111,7 @@ function _get_entity($entity_type = 'node', $bundle = 'event', $entity_id = NULL
  *   an entity type e.g. node.
  * @param string $bundle
  *   a bundle type e.g. event.
- * 
+ *
  * @return array
  *   representing a field.
  */
@@ -209,7 +209,7 @@ function _get_field($entity_type, $bundle, $name) {
  *   an entity type e.g. node.
  * @param string $bundle
  *   a bundle type e.g. event.
- * 
+ *
  * @return array
  *   an array of entity reference fields.
  */
@@ -249,11 +249,11 @@ function _get_entity_reference_fields($entity_type, $bundle) {
 
 /**
  * Gets an array of entity ids with the same master uuid.
- * 
+ *
  * @param type $entity_type
  * @param type $bundle
  * @param type $master_uuid
- * 
+ *
  * @return array of entity ids
  */
 function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
@@ -281,11 +281,14 @@ function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
   return $date_entity_ids;
 }
 
-function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Get the series master UUID.
   $master_uuid = $entity_wrapper->field_master_uuid->value();
-  
+
+  // Get the entity_id from the entity wrapper.
+  $entity_id = $entity_wrapper->getIdentifier();
+
   // Use EFQ to get all dates with the same field_master_uuid value.
   $query = new EntityFieldQuery();
 
@@ -296,12 +299,17 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
       // hook_entity_delete function that calls this one.
       ->fieldCondition('field_master_uuid', 'value', $master_uuid);
 
+  // If necessary, exclude the subject entity from the query.
+  if ($exclude_current_entity == TRUE){
+      $query->propertyCondition('nid', $entity_id, '<>');
+  }
+
   switch ($scope) {
     case 'all':
       // Don't add any more conditions
       break;
     case 'future':
-      // If scope is 'future' and a start date is passed to function, 
+      // If scope is 'future' and a start date is passed to function,
       // add field condition to exclude earlier entities from the query;
       $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
       $repeating_date_field_name = $repeating_date_field['field_name'];
@@ -318,7 +326,7 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
       break;
     default:
       // Default is 'current'
-      $entity_id = $entity_wrapper->getIdentifier();
+
 
       $query->propertyCondition('nid', $entity_id, '=');
       break;
