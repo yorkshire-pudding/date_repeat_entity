@@ -14,14 +14,14 @@ function date_repeat_entity_install() {
   // depend on UUIDs being in place.  UUID is a dependency of this model so
   // it should always be installed before this one its weight should be
   // available to the db_select query below.
-  // Get weight of UUID module from system table
+  // Get weight of UUID module from system table.
   $weight = db_select('system', 's')
       ->fields('s', array('weight'))
       ->condition('name', 'uuid', '=')
       ->execute()
       ->fetchField();
 
-  // Give our module a heavier weight value
+  // Give our module a heavier weight value.
   db_update('system')
       ->fields(array('weight' => $weight + 1))
       ->condition('name', 'date_repeat_entity', '=')
@@ -32,19 +32,16 @@ function date_repeat_entity_install() {
  * Implements hook_uninstall().
  */
 function date_repeat_entity_uninstall() {
-  
 }
 
 /**
  * Implements hook_enable().
  */
 function date_repeat_entity_enable() {
-  
 }
 
 /**
  * Implements hook_disable().
  */
 function date_repeat_entity_disable() {
-  
 }

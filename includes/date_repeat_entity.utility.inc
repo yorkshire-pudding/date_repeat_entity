@@ -52,7 +52,7 @@ function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uu
 }
 
 /**
- * Returns an entity object from an entity uuid.
+ * Returns an entity object from an entity id.
  *
  * @param string $entity_type
  *   the entity type e.g. node.
@@ -250,11 +250,15 @@ function _get_entity_reference_fields($entity_type, $bundle) {
 /**
  * Gets an array of entity ids with the same master uuid.
  *
- * @param type $entity_type
- * @param type $bundle
- * @param type $master_uuid
+ * @param string $entity_type
+ *   the entity type to load, e.g. node.
+ * @param string $bundle
+ *   the bundle type, e.g. event.
+ * @param string $master_uuid
+ *   the alphanumeric master_uuid.
  *
- * @return array of entity ids
+ * @return array
+ *   of entity ids
  */
 function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
 
@@ -281,6 +285,28 @@ function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
   return $date_entity_ids;
 }
 
+/**
+ * Constructs a query that searches for entities matching certain conditions.
+ *
+ * @param EntityDrupalWrapper $entity_wrapper
+ *   A property wrapper for an entity.
+ * @param string $entity_type
+ *   The entity type to load, e.g. node.
+ * @param string $bundle
+ *   The bundle type, e.g. event.
+ * @param string $scope
+ *   Defines the extent to which date series should be searched.
+ *   Can be one of:
+ *     current (for the current date instance only),
+ *     future (for the current and all future date instances),
+ *     all (all instances of a date series).
+ * @param bool $exclude_current_entity
+ *   Specifies whether a query that searches a date series should exclude
+ *   the entity that represents the current date instance.
+ *
+ * @return array
+ *   Represents the result of a query.
+ */
 function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Get the series master UUID.
@@ -300,14 +326,15 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
       ->fieldCondition('field_master_uuid', 'value', $master_uuid);
 
   // If necessary, exclude the subject entity from the query.
-  if ($exclude_current_entity == TRUE){
-      $query->propertyCondition('nid', $entity_id, '<>');
+  if ($exclude_current_entity == TRUE) {
+    $query->propertyCondition('nid', $entity_id, '<>');
   }
 
   switch ($scope) {
     case 'all':
-      // Don't add any more conditions
+      // Don't add any more conditions.
       break;
+
     case 'future':
       // If scope is 'future' and a start date is passed to function,
       // add field condition to exclude earlier entities from the query;
@@ -322,12 +349,10 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
       if (!is_null($start_date)) {
         $query->fieldCondition('field_date', 'value', $start_date, '>=');
       }
-
       break;
+
     default:
-      // Default is 'current'
-
-
+      // Default is 'current'.
       $query->propertyCondition('nid', $entity_id, '=');
       break;
   }
@@ -336,4 +361,85 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
   $result = $query->execute();
 
   return $result;
+}
+
+/**
+ * Determines if an entity with a repeating date has changed.
+ *
+ * Compares the start date, end date and RRULE of new and old entity.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ *
+ * @return bool
+ *   indicates if the date values of an entity with a repeating date
+ *   have materially changed from original to current state.
+ */
+function _repeating_date_has_changed($form, $form_state) {
+
+  $repeating_date_has_changed = FALSE;
+
+  // Check that entity aleady exists - we are not validating new entities.
+  if ($form_state['values']['changed'] != "") {
+
+    // Check that the entity form has a repeating date field and a field that
+    // controls the scope of changes to an entity e.g. All, Future, Single.
+    $entity_type = $form['#entity_type'];
+    $bundle = $form['#bundle'];
+
+    // Make sure utility functions are available.
+    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+
+    if ($repeating_date_field != NULL) {
+
+      // Get the name of the repeating field.
+      $repeating_date_field_name = $repeating_date_field['field_name'];
+      $language = $form_state['values']['language'];
+
+      $new_date_start_value = $form_state['values'][$repeating_date_field_name][$language][0]['value'];
+      $new_date_end_value = $form_state['values'][$repeating_date_field_name][$language][0]['value2'];
+      $new_rrule = $form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
+
+      // TODO: consider if repeat_date_start_value needed
+      // - Google calendar uses it.
+      $new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
+
+      $entity_id = $form['#entity']->nid;
+      $old_entity = entity_load_unchanged($entity_type, $entity_id);
+
+      $old_date_start_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value'];
+      $old_date_end_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value2'];
+      $old_rrule = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['rrule'];
+
+      // TODO: consider if repeat_date_start_value needed
+      // - Google calendar uses it.
+      $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
+
+      // Check if the entity date has changed to the extent that
+      // the repeating date series has changed and therefore dependent data
+      // like date exceptions and referencing entities will need to be reset.
+      $new_date_data = array(
+        $new_date_start_value,
+        $new_date_end_value,
+        $new_rrule,
+        $new_repeat_date_start_value,
+      );
+
+      $old_date_data = array(
+        $old_date_start_value,
+        $old_date_end_value,
+        $old_rrule,
+        $old_repeat_date_start_value,
+      );
+
+      if ($new_date_data !== $old_date_data) {
+        $repeating_date_has_changed = TRUE;
+      }
+    }
+  }
+  return $repeating_date_has_changed;
 }

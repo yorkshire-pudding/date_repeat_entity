@@ -4,19 +4,20 @@
  * @file
  * Adds functionality to entities with repeating date fields
  */
-/*
+
+/**
  * Define field names necessary for module to function.
  */
-define('FIELD_MASTER_UUID', 'field_master_uuid');
-define('FIELD_CLONE_STATE', 'field_clone_state');
-define('BUTTON_NAME_PREFIX', 'update_');
+define('DATE_REPEAT_ENTITY_FIELD_MASTER_UUID', 'field_master_uuid');
+define('DATE_REPEAT_ENTITY_FIELD_CLONE_STATE', 'field_clone_state');
+define('DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX', 'update_');
 
 /**
  * Implements hook_form_alter().
  */
 function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
-  // Check if the form is a node edit form
+  // Check if the form is a node edit form.
   if (!empty($form['#node_edit_form'])) {
 
     $entity_type = $form['#entity_type'];
@@ -30,8 +31,8 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 
     // Check if the entity also has other fields required for this module to
     // function properly.
-    $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
-    $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+    $master_uuid_field = _get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_MASTER_UUID);
+    $clone_state_field = _get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_CLONE_STATE);
 
     if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL
     ) {
@@ -52,8 +53,8 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
         // Prepend a callback to preview action callbacks.
         array_unshift($form['actions']['preview']['#submit'], 'date_repeat_entity_preview_handler');
 
-        // If it exists, prepend the same callback to the preview_changes action.
-        // see the Diff module.
+        // If it exists, prepend the same callback to the preview_changes
+        // action.  (See the Diff module.)
         if (isset($form['actions']['preview_changes'])) {
           array_unshift($form['actions']['preview_changes']['#submit'], 'date_repeat_entity_preview_handler');
         }
@@ -63,24 +64,24 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
           $form_state['default_update_callbacks'] = $form['actions']['submit']['#submit'];
         }
 
-        // Change callback for submit button
+        // Change callback for submit button.
         $form['actions']['submit']['#submit'] = array('date_repeat_entity_update_submit_handler');
 
-        // Store the form's default delete action callbacks.
+        // Define the form's default delete action callbacks.
         if (!isset($form_state['default_delete_callbacks'])) {
-          //$form_state['default_delete_callbacks'] = $form['actions']['delete']['#submit'];
-          // Note: use empty array because we don't actually want to keep the default
-          // submit handler that redirects to the node delete confirmation form.
-          $form_state['default_delete_callbacks'] = array(); //$form['actions']['delete']['#submit'];
+          // Note: use empty array because we don't actually want to keep
+          // the default submit handler that redirects to the node delete
+          // confirmation form.
+          $form_state['default_delete_callbacks'] = array();
         }
 
-        // Change callback for delete button
+        // Change callback for delete button.
         $form['actions']['delete']['#submit'] = array('date_repeat_entity_delete_submit_handler');
 
-        // Check if form is in save confirmation state:
+        // Check if form is in save confirmation state.
         if (isset($form_state['node_confirmation_action'])) {
 
-          // Add fieldset containing confirmation buttons.
+          // If it is then add a fieldset containing confirmation buttons.
           add_confirmation_button_fieldset($form, $form_state);
         }
       }
@@ -91,7 +92,7 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Add a field set containing confirmation buttons to the top of a form.
  *
- * @param type $form
+ * @param array $form
  *   The form object that is being built
  */
 function add_confirmation_button_fieldset(&$form, $form_state) {
@@ -110,13 +111,13 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   // see @node.pages.inc
   $title_field_weight = $form['title']['#weight'];
 
-  // Set a weight for the fieldset
+  // Set a weight for the fieldset.
   $fieldset_weight = $title_field_weight - 10;
 
-  // Define the fieldset
+  // Define the fieldset.
   $form['update-buttons'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Confirm ' . $action),
+    '#title' => t('Confirm ') . $action,
     '#weight' => $fieldset_weight,
   );
 
@@ -137,11 +138,13 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
       $referenced_entities_message .= '<p>There ';
       $referenced_entities_message .= ($number_of_reference_entities > 1) ? 'are ' : 'is ';
 
-      // Print a warning message about the entities that may be affected by update.
+      // Print a warning message about the entities that may be affected
+      // by update.
       $referenced_entities_message .= t(
-          '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
-        '@number_of_referenced_entities' => $number_of_reference_entities,
-        '@entity_label' => $entity_label,
+        '@number_of_referenced_entities referenced @entity_label that may be affected by this update',
+          array(
+            '@number_of_referenced_entities' => $number_of_reference_entities,
+            '@entity_label' => $entity_label,
           )
       );
       $referenced_entities_message .= '.</p>';
@@ -161,7 +164,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   $form['update-buttons']['update-current'] = array(
     '#type' => 'submit',
     '#value' => $action,
-    '#name' => BUTTON_NAME_PREFIX . 'current',
+    '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'current',
     '#submit' => $submit_callbacks,
     '#validate' => array(),
     '#weight' => $update_buttons_element_weight,
@@ -176,7 +179,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
   // Get the master uuid value.
   $master_uuid = $wrapper->field_master_uuid->value();
 
-  // Get related ids
+  // Get related ids.
   $related_entity_ids = _get_related_entity_ids($entity_type, $bundle, $master_uuid);
 
   // If there are related entities we need to give options to user.
@@ -192,7 +195,7 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     $form['update-buttons']['update-future'] = array(
       '#type' => 'submit',
       '#value' => $action . t(' all following'),
-      '#name' => BUTTON_NAME_PREFIX . 'future',
+      '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'future',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
       '#weight' => $update_buttons_element_weight,
@@ -205,19 +208,19 @@ function add_confirmation_button_fieldset(&$form, $form_state) {
     $form['update-buttons']['update-all'] = array(
       '#type' => 'submit',
       '#value' => $action . t(' all events in the series'),
-      '#name' => BUTTON_NAME_PREFIX . 'all',
+      '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'all',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
       '#weight' => $update_buttons_element_weight,
     );
   }
 
-  // Create button that gives user option of cancelling updates
+  // Create button that gives user option of cancelling updates.
   $update_buttons_element_weight++;
   $form['update-buttons']['update-cancel'] = array(
     '#type' => 'submit',
-    '#value' => t('cancel ' . $action),
-    '#name' => BUTTON_NAME_PREFIX . 'cancel',
+    '#value' => t('cancel ') . $action,
+    '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'cancel',
     '#submit' => array('date_repeat_entity_update_dates_cancel'),
     '#validate' => array(),
     '#weight' => $update_buttons_element_weight,
@@ -260,55 +263,81 @@ function date_repeat_entity_submit_handler($form, &$form_state, $action) {
  */
 function date_repeat_entity_preview_handler($form, &$form_state) {
 
-  // Remove node confirmation from form state.
+  // Reset node confirmation action.
   if (isset($form_state['node_confirmation_action'])) {
     unset($form_state['node_confirmation_action']);
   }
 }
 
+/**
+ * Callback for repeating date entity update actions.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ */
 function date_repeat_entity_update_dates($form, &$form_state) {
 
   $form_state['values']['date_repeat_entity']['action'] = $form_state['node_confirmation_action'];
 
+  // Reset the form state property that controls whether to display a
+  // node confirmation fieldset.
   unset($form_state['node_confirmation_action']);
 
-  // Get the scope of the update
-  $scope = str_replace(BUTTON_NAME_PREFIX, '', $form_state['triggering_element']['#name']);
+  // Get the scope of the update.
+  $scope = str_replace(DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX, '', $form_state['triggering_element']['#name']);
 
   // Store the name of the button that was pressed in a form_state values
   // property.
   $form_state['values']['date_repeat_entity']['triggering_element'] = $scope;
 
-  // Make sure repeating date update functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
+  // Make sure repeating date utility functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
   // Determine if the repeating date has materially changed.
   $form_state['values']['date_repeat_entity']['repeating_date_has_changed'] = _repeating_date_has_changed($form, $form_state);
 }
 
+/**
+ * Callback for repeating date entity delete actions.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ */
 function date_repeat_entity_delete_dates($form, &$form_state) {
 
-  //$form_state['values']['date_repeat_entity']['action'] = $form_state['node_confirmation_action'];
-
+  // Reset the form state property that controls whether to display a
+  // node confirmation fieldset.
   unset($form_state['node_confirmation_action']);
 
   // Get scope of the delete.
-  $scope = str_replace(BUTTON_NAME_PREFIX, '', $form_state['triggering_element']['#name']);
+  $scope = str_replace(DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX, '', $form_state['triggering_element']['#name']);
 
-  // Store the name of the button that was pressed in a form_state values
-  // property.
-  //$form_state['values']['date_repeat_entity']['triggering_element'] = $trigger;
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
   // Make sure repeating date delete functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
 
-  // Delete dates based on confirmation button
+  // Delete dates based on confirmation button.
   $entity_type = 'node';
   delete_dates($form['#entity'], $entity_type, $scope);
 }
 
+/**
+ * Callback for entity update/delete cancel action.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ */
 function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
 
   // Remove update buttons fieldset.
@@ -317,7 +346,7 @@ function date_repeat_entity_update_dates_cancel(&$form, &$form_state) {
   // Unset node confirmation status.
   unset($form_state['node_confirmation_action']);
 
-  // Rebuild form
+  // Rebuild form.
   $form_state['rebuild'] = TRUE;
 }
 
@@ -335,6 +364,9 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
   // Make sure repeating date create functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.create');
 
+  // Make sure repeating date update functions are available.
+  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.update');
+
   // Get entity wrapper.
   $wrapper = entity_metadata_wrapper($entity_type, $entity);
 
@@ -346,8 +378,8 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
 
   // Check if the entity also has other fields required for this module to
   // function properly.
-  $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
-  $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
+  $master_uuid_field = _get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_MASTER_UUID);
+  $clone_state_field = _get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_CLONE_STATE);
 
   if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
     if ($entity->is_new) {
@@ -360,36 +392,20 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
 }
 
 /**
- * Implements hook_entity_delete().
+ * Determines if the form references any entities via entity reference fields.
  *
+ * Supports inline entity form widget.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ *
+ * returns array
+ *   Array contains the number of referenced entities and the label for
+ *   each entity reference field that has values.
  */
-function date_repeat_entity_entity_delete($entity, $entity_type) {
-
-  // Make sure utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-
-  // Make sure repeating date delete functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
-
-  // Get entity wrapper.
-  $wrapper = entity_metadata_wrapper($entity_type, $entity);
-
-  // Get bundle type.
-  $bundle = $wrapper->getBundle();
-
-  // Check if the entity attached to the form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
-
-  // Check if the entity also has other fields required for this module to
-  // function properly.
-  $master_uuid_field = _get_field($entity_type, $bundle, FIELD_MASTER_UUID);
-  $clone_state_field = _get_field($entity_type, $bundle, FIELD_CLONE_STATE);
-
-  if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
-    //delete_dates($entity, $entity_type);
-  }
-}
-
 function get_referenced_entities($form, $form_state) {
 
   $referenced_entities = array();
@@ -413,7 +429,7 @@ function get_referenced_entities($form, $form_state) {
     // Get meta data properties of the field instance.
     $info = field_info_instance($entity_type, $field_name, $bundle);
 
-    // Reset entity counter
+    // Reset entity counter.
     $number_of_referenced_entities = 0;
 
     // Methods of retrieving child entities depend on widget type.
@@ -430,9 +446,10 @@ function get_referenced_entities($form, $form_state) {
           $number_of_referenced_entities++;
         }
         break;
+
       default:
-        // Other widgets store referenced field entities in the form_state values
-        // array.
+        // Other widgets store referenced field entities in the form_state
+        // values array.
         foreach ($form_state['values'][$field_name][LANGUAGE_NONE] as $target_entity) {
           if (!is_null($target_entity['target_id'])) {
             $number_of_referenced_entities++;
