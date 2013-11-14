@@ -15,7 +15,7 @@
  * @param string $entity_type
  *   the entity type to load, e.g. node.
  */
-function update_dates($entity, $entity_type) {
+function date_repeat_entity_update_dates($entity, $entity_type) {
 
   // Get entity wrapper.
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
@@ -36,11 +36,11 @@ function update_dates($entity, $entity_type) {
 
       // Replace dates and update entity with new master uuid and related
       // properties.
-      $entity = _replace_dates($entity, $entity_type, $bundle, $scope);
+      $entity = _date_repeat_entity_replace_dates($entity, $entity_type, $bundle, $scope);
     }
     else {
       // Update dates, keeping same master uuid.
-      _update_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope);
+      _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope);
     }
   }
 
@@ -72,13 +72,18 @@ function update_dates($entity, $entity_type) {
  * @return stdClass
  *   Represents the entity that has been updated with a new uuid.
  */
-function _replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _date_repeat_entity_replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
 
   // Clone the entity before the UUID gets changed.
-  // Note: use the clone method rather than replicate_clone_entity which resets
-  // the entity_id.  Also, cannot clone the original wrapper because it still
-  // points to the original entity.
-  $original_entity = clone($entity);
+  // Notes:
+  // - use the clone method rather than replicate_clone_entity which resets
+  //   the entity_id.
+  // - cannot clone the original wrapper because it still points to the original
+  //   entity.
+  // - clone the entity's original state as stored in entity->original.  This
+  //   is because we need to use the original start date when the scope is
+  //   'future'.
+  $original_entity = clone($entity->original);
   $original_entity_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
 
   // Generate a new master UUID.
@@ -89,7 +94,7 @@ function _replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scop
   $entity->vuuid = $master_uuid_new;
 
   // Create new dates based on the current entity and RRULE defined with it.
-  create_dates($entity, $entity_type);
+  date_repeat_entity_create_dates($entity, $entity_type);
 
   // Make sure repeating date delete functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.delete');
@@ -98,7 +103,7 @@ function _replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scop
   // - excluding the current entity date because it will be updated by the save
   // action that called this function.
   $exclude_current_entity = TRUE;
-  _delete_dates($original_entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
+  date_repeat_entity_delete_dates($original_entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   return $entity;
 }
@@ -121,13 +126,13 @@ function _replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scop
  *     future (for the current and all future date instances),
  *     all (all instances of a date series).
  */
-function _update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
 
   // Get entities in date series
   // - excluding the current entity date because it will be updated by the save
   // action that called this function.
   $exclude_current_entity = TRUE;
-  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
+  $result = date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   // If query successful, update retrieved entities.
   if (isset($result[$entity_type])) {
@@ -192,7 +197,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
   // Check that the entity form has a repeating date field.
-  $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+  $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
 
   if ($repeating_date_field != NULL) {
 
@@ -243,7 +248,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
     $master_uuid = $old_entity->{$master_uuid_field_name}[$old_entity->language][0]['value'];
 
     // Get the master entity using the master entity uuid.
-    $master_entity = _get_master_entity($entity_type, $bundle, $master_uuid);
+    $master_entity = date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid);
 
     // Get a start date value for the new date series.
     if (!empty($master_entity)) {

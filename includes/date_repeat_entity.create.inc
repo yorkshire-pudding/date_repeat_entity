@@ -9,7 +9,7 @@
 /**
  * Clones new entities that are part of a repeating date series.
  */
-function create_dates($entity, $entity_type) {
+function date_repeat_entity_create_dates($entity, $entity_type) {
 
   // Make sure utility functions are available.
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
@@ -30,7 +30,7 @@ function create_dates($entity, $entity_type) {
 
     // If the current entity contains a repeating date field then
     // we need to process the entity.
-    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+    $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
 
     if ($repeating_date_field != NULL) {
       // Create a clone of the entity for each date instance in the series

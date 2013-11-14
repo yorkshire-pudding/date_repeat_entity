@@ -7,32 +7,6 @@
  */
 
 /**
- * Update all entities related to the one represented by the current form.
- *
- * @param stdClass $entity
- *   The entity being deleted.
- * @param string $entity_type
- *   The entity type to delete, e.g. node.
- * @param string $scope
- *   Defines the extent to which date series should be searched.
- *   Can be one of:
- *     current (for the current date instance only),
- *     future (for the current and all future date instances),
- *     all (all instances of a date series).
- */
-function delete_dates($entity, $entity_type, $scope = 'all') {
-
-  // Get entity wrapper.
-  $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
-  $bundle = $entity_wrapper->getBundle();
-
-  _delete_dates($entity_wrapper, $entity_type, $bundle, $scope);
-
-  // Go to front page.
-  drupal_goto('<front>');
-}
-
-/**
  * Delete dates associated with a repeating date series.
  *
  * @param EntityDrupalWrapper $entity_wrapper
@@ -54,7 +28,7 @@ function delete_dates($entity, $entity_type, $scope = 'all') {
  * @return bool
  *   the success of this function is represented by this value.
  */
-function _delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
+function date_repeat_entity_delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Instantiate boolean variable to track success of operation.
   $repeating_date_operation_successful = FALSE;
@@ -63,7 +37,7 @@ function _delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event'
   module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
 
   // Get dates.
-  $result = _get_dates($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
+  $result = date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bundle, $scope, $exclude_current_entity);
 
   // If query successful, update retrieved entities.
   if (isset($result[$entity_type])) {

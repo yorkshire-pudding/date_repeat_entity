@@ -19,7 +19,7 @@
  * @return object
  *   representing an entity.
  */
-function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function date_repeat_entity_get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
 
   // Instantiate array to be returned.
   $master_entity = array();
@@ -52,51 +52,6 @@ function _get_master_entity($entity_type = 'node', $bundle = 'event', $master_uu
 }
 
 /**
- * Returns an entity object from an entity id.
- *
- * @param string $entity_type
- *   the entity type e.g. node.
- * @param string $bundle
- *   the bundle type e.g. event.
- * @param int $entity_id
- *   the entity identifier e.g. node id.
- *
- * @return object
- *   representing an array.
- */
-function _get_entity($entity_type = 'node', $bundle = 'event', $entity_id = NULL) {
-
-  // Instantiate array to be returned.
-  $entity = array();
-
-  // Use EFQ to retrieve master entity.
-  $query = new EntityFieldQuery();
-
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
-  $query->entityCondition('entity_type', $entity_type)
-      ->entityCondition('bundle', $bundle)
-      ->entityCondition('entity_id', array($entity_id), 'IN');
-
-  // Retrieve matching entities.
-  $result = $query->execute();
-
-  // If query successful, update retrieved entities.
-  if (isset($result[$entity_type])) {
-
-    // Get array of entity ids.
-    $entity_ids = array_keys($result[$entity_type]);
-
-    // Retrieve entities based on entity ids.
-    $entities = entity_load($entity_type, $entity_ids);
-
-    // Get first element in array (there should only be one).
-    $entity = reset($entities);
-  }
-
-  return $entity;
-}
-
-/**
  * Returns the name of a repeating date field, where it exists.
  *
  * Searches database field definition for a repeating date field which is used
@@ -115,7 +70,7 @@ function _get_entity($entity_type = 'node', $bundle = 'event', $entity_id = NULL
  * @return array
  *   representing a field.
  */
-function _get_repeating_date_field($entity_type, $bundle) {
+function date_repeat_entity_get_repeating_date_field($entity_type, $bundle) {
 
   // Set a default value of NULL.
   $repeating_date_field = NULL;
@@ -166,7 +121,7 @@ function _get_repeating_date_field($entity_type, $bundle) {
  * @return array
  *   representing a field.
  */
-function _get_field($entity_type, $bundle, $name) {
+function date_repeat_entity_get_field($entity_type, $bundle, $name) {
 
   // Set a default value of NULL.
   $field_match = NULL;
@@ -213,7 +168,7 @@ function _get_field($entity_type, $bundle, $name) {
  * @return array
  *   an array of entity reference fields.
  */
-function _get_entity_reference_fields($entity_type, $bundle) {
+function date_repeat_entity_get_entity_reference_fields($entity_type, $bundle) {
 
   // Set a default value of NULL.
   $entity_reference_fields = array();
@@ -260,7 +215,7 @@ function _get_entity_reference_fields($entity_type, $bundle) {
  * @return array
  *   of entity ids
  */
-function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
+function date_repeat_entity_get_related_entity_ids($entity_type, $bundle, $master_uuid) {
 
   $date_entity_ids = array();
 
@@ -307,7 +262,7 @@ function _get_related_entity_ids($entity_type, $bundle, $master_uuid) {
  * @return array
  *   Represents the result of a query.
  */
-function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
+function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Get the series master UUID.
   $master_uuid = $entity_wrapper->field_master_uuid->value();
@@ -338,7 +293,7 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
     case 'future':
       // If scope is 'future' and a start date is passed to function,
       // add field condition to exclude earlier entities from the query;
-      $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+      $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
       $repeating_date_field_name = $repeating_date_field['field_name'];
 
       // Retrieve start date for current entity since this is being applied
@@ -378,7 +333,7 @@ function _get_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $
  *   indicates if the date values of an entity with a repeating date
  *   have materially changed from original to current state.
  */
-function _repeating_date_has_changed($form, $form_state) {
+function date_repeat_entity_repeating_date_has_changed($form, $form_state) {
 
   $repeating_date_has_changed = FALSE;
 
@@ -392,7 +347,7 @@ function _repeating_date_has_changed($form, $form_state) {
 
     // Make sure utility functions are available.
     module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-    $repeating_date_field = _get_repeating_date_field($entity_type, $bundle);
+    $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
 
     if ($repeating_date_field != NULL) {
 
