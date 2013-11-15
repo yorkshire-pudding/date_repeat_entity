@@ -292,12 +292,6 @@ function date_repeat_entity_update_dates_callback($form, &$form_state) {
   // Store the name of the button that was pressed in a form_state values
   // property.
   $form_state['values']['date_repeat_entity']['scope'] = $scope;
-
-  // Make sure repeating date utility functions are available.
-  module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-
-  // Determine if the repeating date has materially changed.
-  $form_state['values']['date_repeat_entity']['repeating_date_has_changed'] = date_repeat_entity_repeating_date_has_changed($form, $form_state);
 }
 
 /**

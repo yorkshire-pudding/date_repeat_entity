@@ -32,8 +32,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
 
     // Determine if there is has been a material change between the
     // original and updated entity
-    //$repeating_date_has_changed = $entity->date_repeat_entity['repeating_date_has_changed'];
-    $repeating_date_has_changed = module_invoke_all('repeating_date_has_materially_changed', $entity->original, $entity, $entity_type);
+    $repeating_date_has_changed = module_invoke_all('repeating_date_has_changed', $entity->original, $entity, $entity_type);
 
     // If the repeating date pattern has changed then replace the entities.
     if ($repeating_date_has_changed) {
@@ -166,6 +165,81 @@ function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type
       entity_save($entity_type, $date_entity);
     }
   }
+}
+
+/**
+ * Implements hook_repeating_date_has_materially_changed().
+ *
+ * Determines if an entity with a repeating date has changed.
+ *
+ * Compares the start date, end date and RRULE of new and old entity.
+ *
+ * @param stdClass $original_entity
+ *   The original entity before being updated.
+ * @param stdClass $updated_entity
+ *   The updated entity.
+ *
+ * @return bool
+ *   indicates if the date values of an entity with a repeating date
+ *   have materially changed from original to current state.
+ */
+function date_repeat_entity_repeating_date_has_changed($original_entity, $updated_entity, $entity_type = 'node') {
+
+  $repeating_date_has_changed = FALSE;
+
+  // Check that entity aleady exists - we are not validating new entities.
+  if (!is_null($original_entity) && !is_null($updated_entity)) {
+
+    // Create two wrappers
+    $original_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
+    $updated_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
+
+    // Check that the entity form has a repeating date field and a field that
+    $bundle = $original_wrapper->getBundle();
+
+    // Make sure utility functions are available.
+    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
+    $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
+
+    if ($repeating_date_field != NULL) {
+
+      // Get the name of the repeating field.
+      $repeating_date_field_name = $repeating_date_field['field_name'];
+
+      // Get original date field properties.
+      $original_date = $original_wrapper->{$repeating_date_field_name}[0]->value();
+      $original_date_start_value = $original_date['value'];
+      $original_date_end_value = $original_date['value2'];
+      $original_rrule = $original_date['rrule'];
+
+      // Get updated date field properties.
+      $updated_date = $updated_wrapper->{$repeating_date_field_name}[0]->value();
+      $updated_date_start_value = $updated_date['value'];
+      $updated_date_end_value = $updated_date['value2'];
+      $updated_rrule = $updated_date['rrule'];
+
+      // Check if the entity date has changed to the extent that
+      // the repeating date series has changed and therefore dependent data
+      // like date exceptions and referencing entities will need to be reset.
+      $updated_date_data = array(
+        $updated_date_start_value,
+        $updated_date_end_value,
+        $updated_rrule,
+      );
+
+      $original_date_data = array(
+        $original_date_start_value,
+        $original_date_end_value,
+        $original_rrule,
+      );
+
+      if ($updated_date_data !== $original_date_data) {
+        $repeating_date_has_changed = TRUE;
+      }
+
+    }
+  }
+  return $repeating_date_has_changed;
 }
 
 /**
@@ -307,96 +381,4 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
     $new_dates = date_repeat_build_dates($new_rrule, NULL, $repeating_date_field, $item);
   }
   return $new_dates;
-}
-
-/**
- * Implements hook_repeating_date_has_materially_changed().
- *
- * Determines if an entity with a repeating date has changed.
- *
- * Compares the start date, end date and RRULE of new and old entity.
- *
- * @param stdClass $original_entity
- *   The original entity before being updated.
- * @param stdClass $updated_entity
- *   The updated entity.
- *
- * @return bool
- *   indicates if the date values of an entity with a repeating date
- *   have materially changed from original to current state.
- */
-function date_repeat_entity_repeating_date_has_materially_changed($original_entity, $updated_entity, $entity_type = 'node') {
-
-  $repeating_date_has_changed = FALSE;
-
-  // Check that entity aleady exists - we are not validating new entities.
-  if (!is_null($original_entity) && !is_null($updated_entity)) {
-
-    // Create two wrappers
-    $original_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
-    $updated_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
-
-    // Check that the entity form has a repeating date field and a field that
-    $bundle = $original_wrapper->getBundle();
-
-    // Make sure utility functions are available.
-    module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
-    $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
-
-    if ($repeating_date_field != NULL) {
-
-      // Get the name of the repeating field.
-      $repeating_date_field_name = $repeating_date_field['field_name'];
-      //$language = $form_state['values']['language'];
-
-      $updated_date_start_value = $updated_wrapper->{$repeating_date_field_name}[0]->value();
-      $updated_date_end_value = $updated_wrapper->{$repeating_date_field_name}->value();
-      $updated_rrule = $updated_wrapper->{$repeating_date_field_name}->value();
-//      $new_date_start_value = $form_state['values'][$repeating_date_field_name][$language][0]['value'];
-//      $new_date_end_value = $form_state['values'][$repeating_date_field_name][$language][0]['value2'];
-//      $new_rrule = $form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
-
-      // TODO: consider if repeat_date_start_value needed
-      // - Google calendar uses it.
-      $updated_repeat_date_start_value = $updated_wrapper->field_repeat_start_date->value();
-
-//      $entity_id = $form['#entity']->nid;
-//      $old_entity = entity_load_unchanged($entity_type, $entity_id);
-
-      $original_date_start_value = $original_wrapper->{$repeating_date_field_name}->value();
-      $original_date_end_value = $original_wrapper->{$repeating_date_field_name}->value();
-      $original_rrule = $original_wrapper->{$repeating_date_field_name}->value();
-
-//      $old_date_start_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value'];
-//      $old_date_end_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value2'];
-//      $old_rrule = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['rrule'];
-
-      // TODO: consider if repeat_date_start_value needed
-      // - Google calendar uses it.
-      $original_repeat_date_start_value = $original_wrapper->field_repeat_start_date->value();
-
-      // Check if the entity date has changed to the extent that
-      // the repeating date series has changed and therefore dependent data
-      // like date exceptions and referencing entities will need to be reset.
-      $updated_date_data = array(
-        $updated_date_start_value,
-        $updated_date_end_value,
-        $updated_rrule,
-        $updated_repeat_date_start_value,
-      );
-
-      $original_date_data = array(
-        $original_date_start_value,
-        $original_date_end_value,
-        $original_rrule,
-        $original_repeat_date_start_value,
-      );
-
-      if ($updated_date_data !== $original_date_data) {
-        $repeating_date_has_changed = TRUE;
-      }
-
-    }
-  }
-  return $repeating_date_has_changed;
 }
