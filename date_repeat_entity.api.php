@@ -3,7 +3,6 @@
 /**
  * @file
  * Hooks provided by the Date Repeat Entity module.
- *
  */
 
 /**
@@ -27,17 +26,18 @@ function hook_repeat_entity_repeating_date_has_changed($original_entity, $update
   // Check that entity aleady exists - we are not validating new entities.
   if (!is_null($original_entity) && !is_null($updated_entity)) {
 
-    // Create two wrappers
+    // Create two wrappers.
     $original_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
     $updated_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
 
-    // Check that the entity form has a repeating date field and a field that
+    // Get bundle type from original entity.
     $bundle = $original_wrapper->getBundle();
 
     // Make sure utility functions are available.
     module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
     $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
 
+    // Check that the entity form has a repeating date field.
     if ($repeating_date_field != NULL) {
 
       // Get the name of the repeating field.
@@ -77,6 +77,21 @@ function hook_repeat_entity_repeating_date_has_changed($original_entity, $update
     }
   }
   return $repeating_date_has_changed;
-
 }
 
+/**
+ * Used to update a date instance in a date series.
+ *
+ * @param stdClass $date_entity
+ *   An instance of a date entity in a series.
+ * @param stdClass $updated_entity
+ *   The updated entity.
+ */
+function hook_repeating_date_update($date_entity, $updated_entity, $entity_type = 'node') {
+
+  $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
+  $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
+
+  // Update date entity title from updated entity.
+  $date_entity_wrapper->title = $updated_entity_wrapper->label();
+}

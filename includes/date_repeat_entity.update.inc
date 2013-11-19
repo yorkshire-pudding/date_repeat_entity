@@ -31,11 +31,11 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
     $bundle = $entity_wrapper->getBundle();
 
     // Determine if there is has been a material change between the
-    // original and updated entity
+    // original and updated entity.
     $repeating_date_has_changed = module_invoke_all('repeating_date_has_changed', $entity->original, $entity, $entity_type);
 
     // If the repeating date pattern has changed then replace the entities.
-    if ($repeating_date_has_changed) {
+    if (in_array(TRUE, $repeating_date_has_changed)) {
 
       // Replace dates and update entity with new master uuid and related
       // properties.
@@ -53,7 +53,6 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
 
   // Make sure entity clone state is set to FALSE - this should be normal state.
   $entity_wrapper->field_clone_state = FALSE;
-
 }
 
 /**
@@ -146,16 +145,14 @@ function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type
     // Retrieve entities based on entity ids.
     $date_entities = entity_load($entity_type, $date_entity_ids);
 
-    // Store entity title in local variable.
-    $new_title = $entity->title;
-
+    // Update each date entity as required.
     foreach ($date_entities as $date_entity) {
+
+      // Let other modules update the date entity.
+      module_invoke_all('repeating_date_update', $date_entity, $entity, $entity_type);
 
       // Get a wrapper for the entity.
       $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
-
-      // Update title and any other relevant fields.
-      $date_entity_wrapper->title = $new_title;
 
       // Set clone state to TRUE so the cloning procedures are skipped
       // when hook_entity_presave is triggered.
@@ -168,20 +165,12 @@ function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type
 }
 
 /**
- * Implements hook_repeating_date_has_materially_changed().
+ * Implements hook_repeating_date_has_changed().
  *
- * Determines if an entity with a repeating date has changed.
+ * see @date_repeat_entity.api.php
  *
- * Compares the start date, end date and RRULE of new and old entity.
- *
- * @param stdClass $original_entity
- *   The original entity before being updated.
- * @param stdClass $updated_entity
- *   The updated entity.
- *
- * @return bool
- *   indicates if the date values of an entity with a repeating date
- *   have materially changed from original to current state.
+ * Determines if an entity with a repeating date has changed.  Compares the
+ * start date, end date and RRULE of new and old entity.
  */
 function date_repeat_entity_repeating_date_has_changed($original_entity, $updated_entity, $entity_type = 'node') {
 
@@ -190,17 +179,18 @@ function date_repeat_entity_repeating_date_has_changed($original_entity, $update
   // Check that entity aleady exists - we are not validating new entities.
   if (!is_null($original_entity) && !is_null($updated_entity)) {
 
-    // Create two wrappers
+    // Create two wrappers.
     $original_wrapper = entity_metadata_wrapper($entity_type, $original_entity);
     $updated_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
 
-    // Check that the entity form has a repeating date field and a field that
+    // Get bundle type from original entity.
     $bundle = $original_wrapper->getBundle();
 
     // Make sure utility functions are available.
     module_load_include('inc', 'date_repeat_entity', 'includes/date_repeat_entity.utility');
     $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
 
+    // Check that the entity form has a repeating date field.
     if ($repeating_date_field != NULL) {
 
       // Get the name of the repeating field.
@@ -236,10 +226,23 @@ function date_repeat_entity_repeating_date_has_changed($original_entity, $update
       if ($updated_date_data !== $original_date_data) {
         $repeating_date_has_changed = TRUE;
       }
-
     }
   }
   return $repeating_date_has_changed;
+}
+
+/**
+ * Implements hook_repeating_date_update().
+ *
+ * see @date_repeat_entity.api.php
+ */
+function date_repeat_entity_repeating_date_update($date_entity, $updated_entity, $entity_type = 'node') {
+
+  $date_entity_wrapper = entity_metadata_wrapper($entity_type, $date_entity);
+  $updated_entity_wrapper = entity_metadata_wrapper($entity_type, $updated_entity);
+
+  // Update date entity title from updated entity.
+  $date_entity_wrapper->title = $updated_entity_wrapper->label();
 }
 
 /**
