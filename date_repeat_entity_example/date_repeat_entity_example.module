@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the date_repeat_entity_example feature.
+ */
+
+include_once 'date_repeat_entity_example.features.inc';
