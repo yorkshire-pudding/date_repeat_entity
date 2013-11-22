@@ -292,7 +292,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
 
     // TODO: consider if repeat_date_start_value needed
     // - Google calendar uses it.
-    $new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
+    //$new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
 
     $old_entity = entity_load_unchanged($entity_type, $entity_id);
 
@@ -302,7 +302,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
 
     // TODO: consider if repeat_date_start_value needed
     // - Google calendar uses it.
-    $old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
+    //$old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
 
     // Get timezone associated with the field instance.
     $timezone = date_get_timezone($repeating_date_field['settings']['tz_handling']);
