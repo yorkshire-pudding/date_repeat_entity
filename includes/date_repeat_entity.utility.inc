@@ -19,7 +19,7 @@
  * @return object
  *   representing an entity.
  */
-function date_repeat_entity_get_master_entity($entity_type = 'node', $bundle = 'event', $master_uuid = NULL) {
+function date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid = NULL) {
 
   // Instantiate array to be returned.
   $master_entity = array();
@@ -262,7 +262,7 @@ function date_repeat_entity_get_related_entity_ids($entity_type, $bundle, $maste
  * @return array
  *   Represents the result of a query.
  */
-function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
+function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bundle, $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Get the series master UUID.
   $master_uuid = $entity_wrapper->field_master_uuid->value();

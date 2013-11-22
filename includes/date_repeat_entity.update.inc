@@ -20,8 +20,8 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
   // Get entity wrapper.
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
 
-  // Get value of clone state - a new event node will have the default state
-  // of FALSE while a cloned event node will have a state of TRUE.
+  // Get value of clone state - a new node will have the default state
+  // of FALSE while a cloned node will have a state of TRUE.
   $field_clone_state = $entity_wrapper->field_clone_state->value();
 
   // Only act on entities that are not clones or equivalent.
@@ -74,7 +74,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
  * @return stdClass
  *   Represents the entity that has been updated with a new uuid.
  */
-function _date_repeat_entity_replace_dates($entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _date_repeat_entity_replace_dates($entity, $entity_type, $bundle, $scope = 'current') {
 
   // Clone the entity before the UUID gets changed.
   // Notes:
@@ -128,7 +128,7 @@ function _date_repeat_entity_replace_dates($entity, $entity_type = 'node', $bund
  *     future (for the current and all future date instances),
  *     all (all instances of a date series).
  */
-function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type = 'node', $bundle = 'event', $scope = 'current') {
+function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type, $bundle, $scope = 'current') {
 
   // Get entities in date series
   // - excluding the current entity date because it will be updated by the save
@@ -270,7 +270,7 @@ function date_repeat_entity_repeating_date_update($date_entity, $updated_entity,
  * @return array
  *   NULL if the repeating date has not changed.
  */
-function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bundle = 'event', $scope = 'All') {
+function _get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $scope = 'all') {
 
   $new_dates = array();
 
@@ -290,19 +290,10 @@ function _get_updated_dates($form_state, $entity_id, $entity_type = 'node', $bun
     $new_date_end_value = $form_state['values'][$repeating_date_field_name][$language][0]['value2'];
     $new_rrule = $form_state['values'][$repeating_date_field_name][$language][0]['rrule'];
 
-    // TODO: consider if repeat_date_start_value needed
-    // - Google calendar uses it.
-    //$new_repeat_date_start_value = $form_state['values']['field_repeat_start_date'][$language][0]['value'];
-
     $old_entity = entity_load_unchanged($entity_type, $entity_id);
 
     $old_date_start_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value'];
     $old_date_end_value = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['value2'];
-    $old_rrule = $old_entity->{$repeating_date_field_name}[$old_entity->language][0]['rrule'];
-
-    // TODO: consider if repeat_date_start_value needed
-    // - Google calendar uses it.
-    //$old_repeat_date_start_value = $old_entity->field_repeat_start_date[$old_entity->language][0]['value'];
 
     // Get timezone associated with the field instance.
     $timezone = date_get_timezone($repeating_date_field['settings']['tz_handling']);

@@ -28,7 +28,7 @@
  * @return bool
  *   the success of this function is represented by this value.
  */
-function date_repeat_entity_delete_dates($entity_wrapper, $entity_type = 'node', $bundle = 'event', $scope = 'current', $exclude_current_entity = FALSE) {
+function date_repeat_entity_delete_dates($entity_wrapper, $entity_type, $bundle, $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Instantiate boolean variable to track success of operation.
   $repeating_date_operation_successful = FALSE;

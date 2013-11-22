@@ -20,8 +20,8 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
   // Get bundle type.
   $bundle = $wrapper->getBundle();
 
-  // Get value of clone state - a new event node will have the default state
-  // of FALSE while a cloned event node will have a state of TRUE.
+  // Get value of clone state - a new date node will have the default state
+  // of FALSE while a cloned node will have a state of TRUE.
   $field_clone_state = $wrapper->field_clone_state->value();
 
   // Clone the new entity and its attached fields using Replicate API
