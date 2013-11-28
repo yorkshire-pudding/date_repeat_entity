@@ -37,12 +37,12 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
     if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL
     ) {
 
-      // Hide the clone state from the event edit form.
+      // Hide the clone state from the edit form.
       if (isset($form['field_clone_state'])) {
         $form['field_clone_state']['#access'] = FALSE;
       }
 
-      // Hide the master UUID from the event edit form.
+      // Hide the master UUID from the edit form.
       if (isset($form['field_master_uuid'])) {
         $form['field_master_uuid']['#access'] = FALSE;
       }
@@ -207,7 +207,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
     $update_buttons_element_weight++;
     $form['update-buttons']['update-all'] = array(
       '#type' => 'submit',
-      '#value' => $action . t(' all events in the series'),
+      '#value' => $action . t(' all dates in the series'),
       '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'all',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
