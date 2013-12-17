@@ -1,0 +1,127 @@
+diff --git a/date_repeat_entity.module b/date_repeat_entity.module
+index 94762b8..777e4fc 100644
+--- a/date_repeat_entity.module
++++ b/date_repeat_entity.module
+@@ -117,7 +117,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+   // Define the fieldset.
+   $form['update-buttons'] = array(
+     '#type' => 'fieldset',
+-    '#title' => t('Confirm ') . $action,
++    '#title' => t('Confirm @action', array('@action' => $action)),
+     '#weight' => $fieldset_weight,
+   );
+ 
+@@ -186,7 +186,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+   if (count($related_entity_ids) > 1) {
+ 
+     // Update default save confirmation button.
+-    $form['update-buttons']['update-current']['#value'] = $action . t(' current');
++    $form['update-buttons']['update-current']['#value'] = t('@action current', array('@action' => $action));
+ 
+     // Create button that gives user option of updating current and future
+     // dates associated with an entity.  Prepend our callback to the
+@@ -194,7 +194,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+     $update_buttons_element_weight++;
+     $form['update-buttons']['update-future'] = array(
+       '#type' => 'submit',
+-      '#value' => $action . t(' all following'),
++      '#value' => t('@action all following', array('@action' => $action)),
+       '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'future',
+       '#submit' => $submit_callbacks,
+       '#validate' => array(),
+@@ -207,7 +207,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+     $update_buttons_element_weight++;
+     $form['update-buttons']['update-all'] = array(
+       '#type' => 'submit',
+-      '#value' => $action . t(' all dates in the series'),
++      '#value' => t('@action all dates in the series', array('@action' => $action)),
+       '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'all',
+       '#submit' => $submit_callbacks,
+       '#validate' => array(),
+@@ -219,7 +219,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
+   $update_buttons_element_weight++;
+   $form['update-buttons']['update-cancel'] = array(
+     '#type' => 'submit',
+-    '#value' => t('cancel ') . $action,
++    '#value' => t('cancel @action', array('@action' => $action)),
+     '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'cancel',
+     '#submit' => array('date_repeat_entity_dates_cancel_callback'),
+     '#validate' => array(),
+diff --git a/includes/date_repeat_entity.create.inc b/includes/date_repeat_entity.create.inc
+index c77ddd5..a1dbf16 100644
+--- a/includes/date_repeat_entity.create.inc
++++ b/includes/date_repeat_entity.create.inc
+@@ -79,14 +79,14 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
+         // current delta.  Need to add an offset of 1 to delta
+         // because delta values are shifted when we applied
+         // array_shift to field_data.
+-        $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
++        $clone_entity->{$field_name}[$entity->language] = array_slice($clone_entity->{$field_name}[$entity->language], $delta + 1, 1);
+ 
+         // Save the cloned entity.
+         entity_save($entity_type, $clone_entity);
+       }
+       // Remove all items from the master entity's field array
+       // except the first.
+-      array_splice($entity->field_date[$entity->language], 1);
++      array_splice($entity->{$field_name}[$entity->language], 1);
+     }
+   }
+ 
+diff --git a/includes/date_repeat_entity.update.inc b/includes/date_repeat_entity.update.inc
+index f0d9978..9d60f52 100644
+--- a/includes/date_repeat_entity.update.inc
++++ b/includes/date_repeat_entity.update.inc
+@@ -19,6 +19,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
+ 
+   // Get entity wrapper.
+   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
++  $bundle = $entity_wrapper->getBundle();
+ 
+   // Get value of clone state - a new node will have the default state
+   // of FALSE while a cloned node will have a state of TRUE.
+@@ -28,7 +29,6 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
+   if ($field_clone_state === FALSE) {
+ 
+     $scope = $entity->date_repeat_entity['scope'];
+-    $bundle = $entity_wrapper->getBundle();
+ 
+     // Determine if there is has been a material change between the
+     // original and updated entity.
+@@ -47,9 +47,13 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
+     }
+   }
+ 
++  // Find out which field we are operating on.
++  $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
++  $repeating_date_field_name = $repeating_date_field['field_name'];
++
+   // Remove any date field delta values that were created during the save
+   // operation - any existing entities should not have these deltas.
+-  array_splice($entity->field_date[$entity->language], 1);
++  array_splice($entity->{$repeating_date_field_name}[$entity->language], 1);
+ 
+   // Make sure entity clone state is set to FALSE - this should be normal state.
+   $entity_wrapper->field_clone_state = FALSE;
+@@ -326,7 +330,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $sco
+     if (!empty($master_entity)) {
+       // If the master entity exists, then use it as the start date value
+       // for calculating new date series.
+-      $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
++      $master_date_start_value = $master_entity->{$repeating_date_field_name}[$master_entity->language][0]['value'];
+     }
+     else {
+       // Otherwise, use the value in the value of the
+diff --git a/includes/date_repeat_entity.utility.inc b/includes/date_repeat_entity.utility.inc
+index 1574feb..16d64f0 100644
+--- a/includes/date_repeat_entity.utility.inc
++++ b/includes/date_repeat_entity.utility.inc
+@@ -302,7 +302,7 @@ function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bu
+       $start_date = $field_data['value'];
+ 
+       if (!is_null($start_date)) {
+-        $query->fieldCondition('field_date', 'value', $start_date, '>=');
++        $query->fieldCondition($repeating_date_field_name, 'value', $start_date, '>=');
+       }
+       break;
+ 

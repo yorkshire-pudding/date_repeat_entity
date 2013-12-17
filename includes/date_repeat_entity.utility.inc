@@ -302,7 +302,7 @@ function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bu
       $start_date = $field_data['value'];
 
       if (!is_null($start_date)) {
-        $query->fieldCondition('field_date', 'value', $start_date, '>=');
+        $query->fieldCondition($repeating_date_field_name, 'value', $start_date, '>=');
       }
       break;
 

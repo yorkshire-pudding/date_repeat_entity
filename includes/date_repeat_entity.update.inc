@@ -19,6 +19,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
 
   // Get entity wrapper.
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
+  $bundle = $entity_wrapper->getBundle();
 
   // Get value of clone state - a new node will have the default state
   // of FALSE while a cloned node will have a state of TRUE.
@@ -28,7 +29,6 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
   if ($field_clone_state === FALSE) {
 
     $scope = $entity->date_repeat_entity['scope'];
-    $bundle = $entity_wrapper->getBundle();
 
     // Determine if there is has been a material change between the
     // original and updated entity.
@@ -47,9 +47,13 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
     }
   }
 
+  // Find out which field we are operating on.
+  $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
+  $repeating_date_field_name = $repeating_date_field['field_name'];
+
   // Remove any date field delta values that were created during the save
   // operation - any existing entities should not have these deltas.
-  array_splice($entity->field_date[$entity->language], 1);
+  array_splice($entity->{$repeating_date_field_name}[$entity->language], 1);
 
   // Make sure entity clone state is set to FALSE - this should be normal state.
   $entity_wrapper->field_clone_state = FALSE;
@@ -326,7 +330,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $sco
     if (!empty($master_entity)) {
       // If the master entity exists, then use it as the start date value
       // for calculating new date series.
-      $master_date_start_value = $master_entity->field_date[$master_entity->language][0]['value'];
+      $master_date_start_value = $master_entity->{$repeating_date_field_name}[$master_entity->language][0]['value'];
     }
     else {
       // Otherwise, use the value in the value of the

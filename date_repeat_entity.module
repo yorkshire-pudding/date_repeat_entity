@@ -117,7 +117,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
   // Define the fieldset.
   $form['update-buttons'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Confirm ') . $action,
+    '#title' => t('Confirm @action', array('@action' => $action)),
     '#weight' => $fieldset_weight,
   );
 
@@ -186,7 +186,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
   if (count($related_entity_ids) > 1) {
 
     // Update default save confirmation button.
-    $form['update-buttons']['update-current']['#value'] = $action . t(' current');
+    $form['update-buttons']['update-current']['#value'] = t('@action current', array('@action' => $action));
 
     // Create button that gives user option of updating current and future
     // dates associated with an entity.  Prepend our callback to the
@@ -194,7 +194,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
     $update_buttons_element_weight++;
     $form['update-buttons']['update-future'] = array(
       '#type' => 'submit',
-      '#value' => $action . t(' all following'),
+      '#value' => t('@action all following', array('@action' => $action)),
       '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'future',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
@@ -207,7 +207,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
     $update_buttons_element_weight++;
     $form['update-buttons']['update-all'] = array(
       '#type' => 'submit',
-      '#value' => $action . t(' all dates in the series'),
+      '#value' => t('@action all dates in the series', array('@action' => $action)),
       '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'all',
       '#submit' => $submit_callbacks,
       '#validate' => array(),
@@ -219,7 +219,7 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
   $update_buttons_element_weight++;
   $form['update-buttons']['update-cancel'] = array(
     '#type' => 'submit',
-    '#value' => t('cancel ') . $action,
+    '#value' => t('cancel @action', array('@action' => $action)),
     '#name' => DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX . 'cancel',
     '#submit' => array('date_repeat_entity_dates_cancel_callback'),
     '#validate' => array(),

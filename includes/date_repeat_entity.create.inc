@@ -79,14 +79,14 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
         // current delta.  Need to add an offset of 1 to delta
         // because delta values are shifted when we applied
         // array_shift to field_data.
-        $clone_entity->field_date[$entity->language] = array_slice($clone_entity->field_date[$entity->language], $delta + 1, 1);
+        $clone_entity->{$field_name}[$entity->language] = array_slice($clone_entity->{$field_name}[$entity->language], $delta + 1, 1);
 
         // Save the cloned entity.
         entity_save($entity_type, $clone_entity);
       }
       // Remove all items from the master entity's field array
       // except the first.
-      array_splice($entity->field_date[$entity->language], 1);
+      array_splice($entity->{$field_name}[$entity->language], 1);
     }
   }
 
