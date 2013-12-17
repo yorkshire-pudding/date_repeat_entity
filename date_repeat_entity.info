@@ -13,10 +13,3 @@ core = 7.x
 ; stylesheets
 stylesheets[all][] = date_repeat_entity.css
 
-
-; Information added by drush on 2013-12-17
-version = "7.x-1.x-alpha1-dev"
-core = "7.x"
-project = "date_repeat_entity"
-datestamp = "1387268725"
-
