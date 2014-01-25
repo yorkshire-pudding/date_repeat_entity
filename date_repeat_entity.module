@@ -23,7 +23,7 @@ function date_repeat_entity_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('date_repeat_entity_admin_settings'),
     'access callback' => 'user_access',
-    'access arguments' => array('administer date repeat entity'),
+    'access arguments' => array('administer site configuration'),
   );
   return $items;
 }
