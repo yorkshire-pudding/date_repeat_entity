@@ -59,3 +59,11 @@ core = "7.x"
 project = "date_repeat_entity"
 datestamp = "1387319315"
 
+
+
+; Information added by drush on 2014-01-24
+version = "7.x-1.x-alpha1-dev"
+core = "7.x"
+project = "date_repeat_entity"
+datestamp = "1390628828"
+

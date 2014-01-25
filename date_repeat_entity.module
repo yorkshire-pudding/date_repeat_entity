@@ -13,6 +13,44 @@ define('DATE_REPEAT_ENTITY_FIELD_CLONE_STATE', 'field_clone_state');
 define('DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX', 'update_');
 
 /**
+ * Implements hook_menu().
+ */
+function date_repeat_entity_menu() {
+  $items = array();
+  $items['admin/config/date/date_repeat_entity'] = array(
+    'title' => 'Date Repeat Entity',
+    'description' => 'Date repeat entity administration.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('date_repeat_entity_admin_settings'),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer date repeat entity'),
+  );
+  return $items;
+}
+
+/**
+ * Date repeat entity administration.
+ */
+function date_repeat_entity_admin_settings() {
+  $form = array();
+
+  $form['#prefix'] = '<h2>Date Repeat Entity Administration</h2>';
+
+  $bundles = node_type_get_names();
+  $defaults = array_keys($bundles);
+
+  $form['date_repeat_entity_bundles_available'] = array(
+    '#title' => t('Bundles available to date repeat entity'),
+    '#type' => 'checkboxes',
+    '#options' => $bundles,
+    '#default_value' => variable_get('date_repeat_entity_bundles_available', $defaults),
+    '#description' => t("Select the bundles (content types) that date repeat entity should work with."),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
  * Implements hook_form_alter().
  */
 function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
@@ -141,10 +179,9 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
       // Print a warning message about the entities that may be affected
       // by update.
       $referenced_entities_message .= t(
-        '@number_of_referenced_entities referenced @entity_label that may be affected by this update',
-          array(
-            '@number_of_referenced_entities' => $number_of_reference_entities,
-            '@entity_label' => $entity_label,
+          '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
+        '@number_of_referenced_entities' => $number_of_reference_entities,
+        '@entity_label' => $entity_label,
           )
       );
       $referenced_entities_message .= '.</p>';
