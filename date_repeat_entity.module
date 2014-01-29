@@ -180,8 +180,8 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
       // by update.
       $referenced_entities_message .= t(
           '@number_of_referenced_entities referenced @entity_label that may be affected by this update', array(
-          '@number_of_referenced_entities' => $number_of_reference_entities,
-          '@entity_label' => $entity_label,
+            '@number_of_referenced_entities' => $number_of_reference_entities,
+            '@entity_label' => $entity_label,
           )
       );
       $referenced_entities_message .= '.</p>';

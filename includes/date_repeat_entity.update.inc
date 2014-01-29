@@ -75,7 +75,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
  *     future (for the current and all future date instances),
  *     all (all instances of a date series).
  *
- * @return stdClass
+ * @return object
  *   Represents the entity that has been updated with a new uuid.
  */
 function _date_repeat_entity_replace_dates($entity, $entity_type, $bundle, $scope = 'current') {

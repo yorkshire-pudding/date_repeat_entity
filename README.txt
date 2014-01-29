@@ -26,8 +26,8 @@ The following modules must be installed and enabled for this module to work:
 
 -- INSTALLATION --
 
-* Install as usual, see https://drupal.org/documentation/install/modules-themes/modules-7
- for further information.
+* Install as usual.  For more information see
+ https://drupal.org/documentation/install/modules-themes/modules-7
 
 -- CONFIGURATION --
 
