@@ -8,9 +8,9 @@
 /**
  * Determines if an entity with a repeating date has changed.
  *
- * @param stdClass $original_entity
+ * @param object $original_entity
  *   The original entity before being updated.
- * @param stdClass $updated_entity
+ * @param object $updated_entity
  *   The updated entity.
  * @param string $entity_type
  *   The entity type
@@ -82,9 +82,9 @@ function hook_repeat_entity_repeating_date_has_changed($original_entity, $update
 /**
  * Used to update a date instance in a date series.
  *
- * @param stdClass $date_entity
+ * @param object $date_entity
  *   An instance of a date entity in a series.
- * @param stdClass $updated_entity
+ * @param object $updated_entity
  *   The updated entity.
  */
 function hook_repeating_date_update($date_entity, $updated_entity, $entity_type = 'node') {

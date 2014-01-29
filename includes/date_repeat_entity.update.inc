@@ -9,7 +9,7 @@
 /**
  * Update or replaces date entities based on a scope determined by user.
  *
- * @param stdClass $entity
+ * @param object $entity
  *   The entity being updated.
  *
  * @param string $entity_type
@@ -62,7 +62,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
 /**
  * Replace dates associated with a repeating date series.
  *
- * @param stdClass $entity
+ * @param object $entity
  *   The entity being updated.
  * @param string $entity_type
  *   The entity type to load, e.g. node.
@@ -119,7 +119,7 @@ function _date_repeat_entity_replace_dates($entity, $entity_type, $bundle, $scop
  *
  * @param EntityDrupalWrapper $entity_wrapper
  *   A property wrapper for an entity.
- * @param stdClass $entity
+ * @param object $entity
  *   The entity being updated.
  * @param string $entity_type
  *   The entity type to load, e.g. node.
@@ -274,7 +274,7 @@ function date_repeat_entity_repeating_date_update($date_entity, $updated_entity,
  * @return array
  *   NULL if the repeating date has not changed.
  */
-function _get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $scope = 'all') {
+function _date_repeat_entity_get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $scope = 'all') {
 
   $new_dates = array();
 
@@ -335,7 +335,7 @@ function _get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $sco
     else {
       // Otherwise, use the value in the value of the
       // repeat_date_start field.
-      $master_date_start_value = $new_repeat_date_start_value;
+      $master_date_start_value = $new_date_start_value;
     }
     // Convert master entity start date to a DateObject.
     $master_date_start = new DateObject($master_date_start_value, $timezone, date_type_format($repeating_date_field['type']));

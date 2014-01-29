@@ -2,8 +2,6 @@ name = Date Repeat Entity Example
 description = Views and content types associated with events and calendars
 core = 7.x
 package = Features
-version = 7.x-1.0-alpha1
-project = date_repeat_entity_example
 dependencies[] = calendar
 dependencies[] = ctools
 dependencies[] = date
@@ -17,7 +15,6 @@ dependencies[] = options
 dependencies[] = strongarm
 dependencies[] = text
 dependencies[] = views
-datestamp = 1383065465
 features[ctools][] = strongarm:strongarm:1
 features[ctools][] = views:views_default:3.0
 features[features_api][] = api:2
@@ -43,27 +40,3 @@ features[variable][] = node_options_event
 features[variable][] = node_preview_event
 features[variable][] = node_submitted_event
 features[views_view][] = date_repeat_entity_example_calendar
-
-
-; Information added by drush on 2013-12-17
-version = "7.x-1.x-alpha1-dev"
-core = "7.x"
-project = "date_repeat_entity"
-datestamp = "1387268725"
-
-
-
-; Information added by drush on 2013-12-17
-version = "7.x-1.x-alpha1-dev"
-core = "7.x"
-project = "date_repeat_entity"
-datestamp = "1387319315"
-
-
-
-; Information added by drush on 2014-01-24
-version = "7.x-1.x-alpha1-dev"
-core = "7.x"
-project = "date_repeat_entity"
-datestamp = "1390628828"
-

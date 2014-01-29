@@ -1,0 +1,4 @@
+
+Date Repeat Entity 7.x-1.x
+-----------------------------------
+Initial release of dev version.

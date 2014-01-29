@@ -101,9 +101,9 @@ function date_repeat_entity_get_repeating_date_field($entity_type, $bundle) {
           // entity types) associated with this entity type.
           foreach ($bundles as $field_bundle) {
 
-            // If the entity type and bundle type passed to this function are the
-            // same as the entity type and bundle of the repeating date field then
-            // we have a match.
+            // If the entity type and bundle type passed to this function are
+            // the same as the entity type and bundle of the repeating date
+            // field then we have a match.
             if ($entity_type == $field_entity_type && $bundle == $field_bundle) {
               $repeating_date_field = $field;
               return $repeating_date_field;
