@@ -46,6 +46,7 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
 
       // Get an array of field data for the current entity.
       $field_name = $repeating_date_field['field_name'];
+      $field_language = field_language($entity_type,$entity,$field_name);
       $field_data = field_get_items($entity_type, $entity, $field_name);
 
       // Create a new set of dates by removing the first item in
@@ -79,14 +80,14 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
         // current delta.  Need to add an offset of 1 to delta
         // because delta values are shifted when we applied
         // array_shift to field_data.
-        $clone_entity->{$field_name}[$entity->language] = array_slice($clone_entity->{$field_name}[$entity->language], $delta + 1, 1);
+        $clone_entity->{$field_name}[$field_language] = array_slice($clone_entity->{$field_name}[$field_language], $delta + 1, 1);
 
         // Save the cloned entity.
         entity_save($entity_type, $clone_entity);
       }
       // Remove all items from the master entity's field array
       // except the first.
-      array_splice($entity->{$field_name}[$entity->language], 1);
+      array_splice($entity->{$field_name}[$field_language], 1);
     }
   }
 

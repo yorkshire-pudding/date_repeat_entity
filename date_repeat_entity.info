@@ -11,3 +11,4 @@ dependencies[] = uuid
 
 ; stylesheets
 stylesheets[all][] = date_repeat_entity.css
+

@@ -40,3 +40,4 @@ features[variable][] = node_options_event
 features[variable][] = node_preview_event
 features[variable][] = node_submitted_event
 features[views_view][] = date_repeat_entity_example_calendar
+
