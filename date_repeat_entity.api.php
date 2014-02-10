@@ -19,7 +19,7 @@
  *   indicates if the date values of an entity with a repeating date
  *   have materially changed from original to current state.
  */
-function hook_repeat_entity_repeating_date_has_changed($original_entity, $updated_entity, $entity_type = 'node') {
+function hook_repeating_date_has_changed($original_entity, $updated_entity, $entity_type = 'node') {
 
   $repeating_date_has_changed = FALSE;
 
