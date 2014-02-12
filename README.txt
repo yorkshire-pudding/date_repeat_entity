@@ -21,6 +21,7 @@ referenced entities, associated with the current date entity, may be affected.
 The following modules must be installed and enabled for this module to work:
 
 * Date, Date API, Date Repeat, Date Repeat Field (all part of Date module)
+* Entity
 * Replicate
 * UUID
 
@@ -31,19 +32,12 @@ The following modules must be installed and enabled for this module to work:
 
 -- CONFIGURATION --
 
-* For each entity that you want to use this module with, you need to add two
-  additional fields
+* Go to admin/config/date/date_repeat_entity and check each content type that
+  you want to enable for this module.
 
-  - field_clone_state (boolean)
-  - field_master_uuid (text)
+* The module will create two additional fields for each enabled content type.
 
-  These fields are necessary to manage the replication of entities in a date
-  series and to track related entities via a master UUID.  An example feature
-  module Date Repeat Entity Example, bundled with this module, provides these
-  an Event content type including the above fields and a calendar view.
-
-  Eventually, it is hoped that these two fields can be integrated with the
-  schema definition provided by the Date module.
+* If necessary, add a date field to each content type.
 
 -- CUSTOMIZATION --
 

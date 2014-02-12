@@ -13,13 +13,13 @@
  *   the entity type to load, e.g. node.
  * @param string $bundle
  *   the bundle type, e.g. event.
- * @param string $master_uuid
+ * @param string $master_uuid_value
  *   the alphanumeric master_uuid.
  *
  * @return object
  *   representing an entity.
  */
-function date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid = NULL) {
+function date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid_value = NULL) {
 
   // Instantiate array to be returned.
   $master_entity = array();
@@ -30,7 +30,7 @@ function date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uui
   // Define EFQ conditions based on the entity type, bundle and master_uuid.
   $query->entityCondition('entity_type', $entity_type)
       ->entityCondition('bundle', $bundle)
-      ->propertyCondition('uuid', $master_uuid);
+      ->propertyCondition('uuid', $master_uuid_value);
 
   // Retrieve matching entities.
   $result = $query->execute();
@@ -127,7 +127,7 @@ function date_repeat_entity_get_repeating_date_field($entity_type, $bundle) {
  * @param string $bundle
  *   a bundle type e.g. event.
  * @param string $name
- *   a field machine name e.g. field_master_uuid.
+ *   a field machine name.
  *
  * @return array
  *   representing a field.
@@ -220,23 +220,23 @@ function date_repeat_entity_get_entity_reference_fields($entity_type, $bundle) {
  *   the entity type to load, e.g. node.
  * @param string $bundle
  *   the bundle type, e.g. event.
- * @param string $master_uuid
+ * @param string $master_uuid_value
  *   the alphanumeric master_uuid.
  *
  * @return array
  *   of entity ids
  */
-function date_repeat_entity_get_related_entity_ids($entity_type, $bundle, $master_uuid) {
+function date_repeat_entity_get_related_entity_ids($entity_type, $bundle, $master_uuid_value) {
 
   $date_entity_ids = array();
 
-  // Use EFQ to get all dates with the same field_master_uuid value.
+  // Use EFQ to get all dates with the same master uuid value.
   $query = new EntityFieldQuery();
 
-  // Define EFQ conditions based on the entity type, bundle and master_uuid.
+  // Define EFQ conditions based on the entity type, bundle and master uuid.
   $query->entityCondition('entity_type', $entity_type)
       ->entityCondition('bundle', $bundle)
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+      ->fieldCondition(DATE_REPEAT_ENTITY_FIELD_MASTER_UUID, 'value', $master_uuid_value);
 
   // Retrieve matching entities.
   $result = $query->execute();
@@ -276,12 +276,12 @@ function date_repeat_entity_get_related_entity_ids($entity_type, $bundle, $maste
 function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bundle, $scope = 'current', $exclude_current_entity = FALSE) {
 
   // Get the series master UUID.
-  $master_uuid = $entity_wrapper->field_master_uuid->value();
+  $master_uuid_value = $entity_wrapper->{DATE_REPEAT_ENTITY_FIELD_MASTER_UUID}->value();
 
   // Get the entity_id from the entity wrapper.
   $entity_id = $entity_wrapper->getIdentifier();
 
-  // Use EFQ to get all dates with the same field_master_uuid value.
+  // Use EFQ to get all dates with the same master uuid value.
   $query = new EntityFieldQuery();
 
   // Define EFQ conditions based on the entity type, bundle and master_uuid.
@@ -289,7 +289,7 @@ function date_repeat_entity_get_date_entities($entity_wrapper, $entity_type, $bu
       ->entityCondition('bundle', $bundle)
       // Note: exclude current entity because it will be deleted as part of the
       // hook_entity_delete function that calls this one.
-      ->fieldCondition('field_master_uuid', 'value', $master_uuid);
+      ->fieldCondition(DATE_REPEAT_ENTITY_FIELD_MASTER_UUID, 'value', $master_uuid_value);
 
   // If necessary, exclude the subject entity from the query.
   if ($exclude_current_entity == TRUE) {

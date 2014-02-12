@@ -23,10 +23,10 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
 
   // Get value of clone state - a new node will have the default state
   // of FALSE while a cloned node will have a state of TRUE.
-  $field_clone_state = $entity_wrapper->field_clone_state->value();
+  $field_clone_state_value = $entity_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE}->value();
 
   // Only act on entities that are not clones or equivalent.
-  if ($field_clone_state === FALSE) {
+  if ($field_clone_state_value === FALSE) {
 
     $scope = $entity->date_repeat_entity['scope'];
 
@@ -57,7 +57,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
   array_splice($entity->{$repeating_date_field_name}[$repeating_date_field_language], 1);
 
   // Make sure entity clone state is set to FALSE - this should be normal state.
-  $entity_wrapper->field_clone_state = FALSE;
+  $entity_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE} = FALSE;
 }
 
 /**
@@ -161,7 +161,7 @@ function _date_repeat_entity_update_dates($entity_wrapper, $entity, $entity_type
 
       // Set clone state to TRUE so the cloning procedures are skipped
       // when hook_entity_presave is triggered.
-      $date_entity_wrapper->field_clone_state = TRUE;
+      $date_entity_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE} = TRUE;
 
       // Save the entity.
       entity_save($entity_type, $date_entity);
@@ -321,11 +321,10 @@ function _date_repeat_entity_get_updated_dates($form_state, $entity_id, $entity_
     $interval_between_new_start_and_new_end_date = new DateInterval('PT' . $seconds_between_new_start_and_new_end_date . 'S');
 
     // Get the series master entity uuid from the current entity.
-    $master_uuid_field_name = 'field_master_uuid';
-    $master_uuid = $old_entity->{$master_uuid_field_name}[$old_entity->language][0]['value'];
+    $master_uuid_value = $old_entity->{DATE_REPEAT_ENTITY_FIELD_MASTER_UUID}[$old_entity->language][0]['value'];
 
     // Get the master entity using the master entity uuid.
-    $master_entity = date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid);
+    $master_entity = date_repeat_entity_get_master_entity($entity_type, $bundle, $master_uuid_value);
 
     // Get a start date value for the new date series.
     if (!empty($master_entity)) {

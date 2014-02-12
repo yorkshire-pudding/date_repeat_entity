@@ -55,36 +55,40 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
       if ($master_uuid_instance) {
         field_delete_instance($master_uuid_instance);
       }
-      if ($clone_state_instance) {
+      if (is_null($clone_state_instance) === FALSE) {
         field_delete_instance($clone_state_instance);
       }
     }
     else {
 
       // Add instances of uuid and clone state fields to bundle
-      if ($master_uuid_instance === FALSE) {
+      if (is_null($master_uuid_instance)) {
         $master_uuid_instance_definition = array(
           'field_name' => DATE_REPEAT_ENTITY_FIELD_MASTER_UUID,
           'entity_type' => 'node',
           'bundle' => $bundle,
           'display' => array(
-            'label' => 'hidden',
-            'settings' => array(),
-            'type' => 'hidden',
+            'default' => array(
+              'label' => 'hidden',
+              'settings' => array(),
+              'type' => 'hidden',
+            ),
           ),
         );
         $new_master_uuid_instance = field_create_instance($master_uuid_instance_definition);
       }
 
-      if ($clone_state_instance === FALSE) {
+      if (is_null($clone_state_instance)) {
         $clone_state_instance_definition = array(
           'field_name' => DATE_REPEAT_ENTITY_FIELD_CLONE_STATE,
           'entity_type' => 'node',
           'bundle' => $bundle,
           'display' => array(
-            'label' => 'hidden',
-            'settings' => array(),
-            'type' => 'hidden',
+            'default' => array(
+              'label' => 'hidden',
+              'settings' => array(),
+              'type' => 'hidden',
+            ),
           ),
         );
 

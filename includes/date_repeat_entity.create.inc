@@ -22,11 +22,11 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
 
   // Get value of clone state - a new date node will have the default state
   // of FALSE while a cloned node will have a state of TRUE.
-  $field_clone_state = $wrapper->field_clone_state->value();
+  $field_clone_state_value = $wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE}->value();
 
   // Clone the new entity and its attached fields using Replicate API
   // module.
-  if ($field_clone_state === FALSE) {
+  if ($field_clone_state_value === FALSE) {
 
     // If the current entity contains a repeating date field then
     // we need to process the entity.
@@ -37,12 +37,12 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
       // except the first, which will be saved though the submit handler
       // on the node edit form itself.
       // Get the UUID from the master (original) date.
-      $master_uuid = $wrapper->uuid->value();
+      $master_uuid_value = $wrapper->uuid->value();
 
       // Assign the UUID to the master UUID field.
       // Give the original entity a reference to its own UUID.
       // This will be needed for any updates of the recurring date series.
-      $wrapper->field_master_uuid = $master_uuid;
+      $wrapper->{DATE_REPEAT_ENTITY_FIELD_MASTER_UUID} = $master_uuid_value;
 
       // Get an array of field data for the current entity.
       $field_name = $repeating_date_field['field_name'];
@@ -64,17 +64,17 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
         $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
 
         // Flag the node as cloned.
-        $clone_wrapper->field_clone_state = TRUE;
+        $clone_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE} = TRUE;
 
         // Give the cloned entity a reference to the master UUID.
-        $clone_wrapper->field_master_uuid = $master_uuid;
+        $clone_wrapper->{DATE_REPEAT_ENTITY_FIELD_MASTER_UUID} = $master_uuid_value;
 
         // Reset the UUID, version UUID and version log string
         // of the cloned entity to differentiate from the
         // original entity.
         $clone_entity->uuid = NULL;
         $clone_entity->vuuid = NULL;
-        $clone_entity->log = "cloned from uuid : " . $master_uuid;
+        $clone_entity->log = "cloned from uuid : " . $master_uuid_value;
 
         // Replace field array with the row that matches the
         // current delta.  Need to add an offset of 1 to delta
@@ -92,5 +92,5 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
   }
 
   // Reset the flag for clone state, just before saving the entity.
-  $wrapper->field_clone_state = FALSE;
+  $wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE} = FALSE;
 }
