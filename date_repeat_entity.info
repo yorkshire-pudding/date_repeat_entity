@@ -2,13 +2,18 @@ name = Date Repeat Entity
 description = Manages entities with repeating dates using the Date Repeat API.
 core = 7.x
 package = Date/Time
+
+; dependencies
 dependencies[] = date_api
 dependencies[] = date
 dependencies[] = date_repeat
 dependencies[] = date_repeat_field
+dependencies[] = entity
 dependencies[] = replicate
 dependencies[] = uuid
 
+; configuration
+configure = admin/config/date/date_repeat_entity
+
 ; stylesheets
 stylesheets[all][] = date_repeat_entity.css
-

@@ -26,4 +26,32 @@ function date_repeat_entity_install() {
       ->fields(array('weight' => $weight + 1))
       ->condition('name', 'date_repeat_entity', '=')
       ->execute();
+
+  // Create base fields, specific to this module.
+  $master_uuid_name = DATE_REPEAT_ENTITY_FIELD_MASTER_UUID;
+  if (!field_info_field($master_uuid_name)) {
+    $definition_master_uuid = array(
+      'field_name' => $master_uuid_name,
+      'type' => 'text',
+    );
+    $field_master_uuid = field_create_field($definition_master_uuid);
+  }
+  $clone_state_name = DATE_REPEAT_ENTITY_FIELD_CLONE_STATE;
+  if (!field_info_field($clone_state_name)) {
+    $definition_clone_state = array(
+      'field_name' => $clone_state_name,
+      'type' => 'list_boolean',
+    );
+    $field_clone_state = field_create_field($definition_clone_state);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function date_repeat_entity_uninstall() {
+
+  // TODO:
+
+
 }

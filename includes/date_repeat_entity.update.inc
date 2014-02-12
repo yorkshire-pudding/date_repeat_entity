@@ -50,7 +50,7 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
   // Find out which field we are operating on.
   $repeating_date_field = date_repeat_entity_get_repeating_date_field($entity_type, $bundle);
   $repeating_date_field_name = $repeating_date_field['field_name'];
-  $repeating_date_field_language = field_language($entity_type,$entity,$repeating_date_field_name);
+  $repeating_date_field_language = field_language($entity_type, $entity, $repeating_date_field_name);
 
   // Remove any date field delta values that were created during the save
   // operation - any existing entities should not have these deltas.

@@ -46,7 +46,7 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
 
       // Get an array of field data for the current entity.
       $field_name = $repeating_date_field['field_name'];
-      $field_language = field_language($entity_type,$entity,$field_name);
+      $field_language = field_language($entity_type, $entity, $field_name);
       $field_data = field_get_items($entity_type, $entity, $field_name);
 
       // Create a new set of dates by removing the first item in

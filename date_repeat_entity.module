@@ -8,8 +8,8 @@
 /**
  * Define field names necessary for module to function.
  */
-define('DATE_REPEAT_ENTITY_FIELD_MASTER_UUID', 'field_master_uuid');
-define('DATE_REPEAT_ENTITY_FIELD_CLONE_STATE', 'field_clone_state');
+define('DATE_REPEAT_ENTITY_FIELD_MASTER_UUID', 'date_repeat_entity_master_uuid');
+define('DATE_REPEAT_ENTITY_FIELD_CLONE_STATE', 'date_repeat_entity_clone_state');
 define('DATE_REPEAT_ENTITY_BUTTON_NAME_PREFIX', 'update_');
 
 /**
@@ -20,34 +20,13 @@ function date_repeat_entity_menu() {
   $items['admin/config/date/date_repeat_entity'] = array(
     'title' => 'Date Repeat Entity',
     'description' => 'Date repeat entity administration.',
+    'file' => 'date_repeat_entity.admin.inc',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('date_repeat_entity_admin_settings'),
-    'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
   );
+
   return $items;
-}
-
-/**
- * Date repeat entity administration.
- */
-function date_repeat_entity_admin_settings() {
-  $form = array();
-
-  $form['#prefix'] = '<h2>Date Repeat Entity Administration</h2>';
-
-  $bundles = node_type_get_names();
-  $defaults = array_keys($bundles);
-
-  $form['date_repeat_entity_bundles_available'] = array(
-    '#title' => t('Bundles available to date repeat entity'),
-    '#type' => 'checkboxes',
-    '#options' => $bundles,
-    '#default_value' => variable_get('date_repeat_entity_bundles_available', $defaults),
-    '#description' => t("Select the bundles (content types) that date repeat entity should work with."),
-  );
-
-  return system_settings_form($form);
 }
 
 /**
