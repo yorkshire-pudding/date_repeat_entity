@@ -27,22 +27,8 @@ function date_repeat_entity_install() {
       ->condition('name', 'date_repeat_entity', '=')
       ->execute();
 
-  // Create base fields, specific to this module.
-  if (!field_info_field(DATE_REPEAT_ENTITY_FIELD_MASTER_UUID)) {
-    $definition_master_uuid = array(
-      'field_name' => DATE_REPEAT_ENTITY_FIELD_MASTER_UUID,
-      'type' => 'text',
-    );
-    $field_master_uuid = field_create_field($definition_master_uuid);
-  }
-
-  if (!field_info_field(DATE_REPEAT_ENTITY_FIELD_CLONE_STATE)) {
-    $definition_clone_state = array(
-      'field_name' => DATE_REPEAT_ENTITY_FIELD_CLONE_STATE,
-      'type' => 'list_boolean',
-    );
-    $field_clone_state = field_create_field($definition_clone_state);
-  }
+  // Create base fields.
+  _date_repeat_entity_create_base_fields();
 }
 
 /**
@@ -50,7 +36,22 @@ function date_repeat_entity_install() {
  */
 function date_repeat_entity_uninstall() {
 
-  // TODO:
+  // Remove variable.
+  variable_del('date_repeat_entity_bundles_available');
 
+  // Explicitly load module file (which will no longer be available
+  // at this stage.
+  drupal_load('module', 'date_repeat_entity');
 
+  // Remove uuid field from application.
+  $field_master_uuid = field_info_field(DATE_REPEAT_ENTITY_FIELD_MASTER_UUID);
+  if ($field_master_uuid) {
+    field_delete_field($field_master_uuid['field_name']);
+  }
+
+  // Remove clone state field from application.
+  $field_clone_state = field_info_field(DATE_REPEAT_ENTITY_FIELD_CLONE_STATE);
+  if ($field_clone_state) {
+    field_delete_field($field_clone_state['field_name']);
+  }
 }

@@ -1,3 +1,6 @@
+Date Repeat Entity 7.x-2.x
+-----------------------------------
+Issue #2184211 - Clone state and master UUID field are now created automatically
 
 Date Repeat Entity 7.x-1.x
 -----------------------------------

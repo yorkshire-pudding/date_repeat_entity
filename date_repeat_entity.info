@@ -9,7 +9,9 @@ dependencies[] = date
 dependencies[] = date_repeat
 dependencies[] = date_repeat_field
 dependencies[] = entity
+dependencies[] = list
 dependencies[] = replicate
+dependencies[] = text
 dependencies[] = uuid
 
 ; configuration

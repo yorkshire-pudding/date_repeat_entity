@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Allows administrators to configure bundles to work with this module.
+ */
+
+/**
  * Date repeat entity administration.
  */
 function date_repeat_entity_admin_settings() {
@@ -37,12 +42,15 @@ function date_repeat_entity_admin_settings() {
 /**
  * Submit handler for configuration form.
  *
- * @param type $form
- * @param type $form_state
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
  */
 function date_repeat_entity_admin_settings_submit($form, &$form_state) {
 
-  // Loop over bundles
+  // Loop over bundles.
   foreach ($form_state['values']['date_repeat_entity_bundles_available'] as $bundle => $state) {
 
     $master_uuid_instance = field_info_instance('node', DATE_REPEAT_ENTITY_FIELD_MASTER_UUID, $bundle);
@@ -51,22 +59,26 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
     // Work on the unchecked bundles.
     if ($state === 0) {
 
-      // Remove instances of uuid and clone state fields from bundle
+      // Remove instances of uuid and clone state fields from bundle.
       if ($master_uuid_instance) {
         field_delete_instance($master_uuid_instance);
       }
-      if (is_null($clone_state_instance) === FALSE) {
+      if ($clone_state_instance) {
         field_delete_instance($clone_state_instance);
       }
     }
     else {
 
-      // Add instances of uuid and clone state fields to bundle
+      // Make sure base fields exist.
+      _date_repeat_entity_create_base_fields();
+
+      // Add instances of uuid and clone state fields to bundle.
       if (is_null($master_uuid_instance)) {
         $master_uuid_instance_definition = array(
           'field_name' => DATE_REPEAT_ENTITY_FIELD_MASTER_UUID,
           'entity_type' => 'node',
           'bundle' => $bundle,
+          'default_value' => NULL,
           'display' => array(
             'default' => array(
               'label' => 'hidden',
@@ -83,6 +95,14 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
           'field_name' => DATE_REPEAT_ENTITY_FIELD_CLONE_STATE,
           'entity_type' => 'node',
           'bundle' => $bundle,
+          'default_value' => array(
+            0 => array(
+              'value' => 0,
+            ),
+          ),
+          'widget' => array(
+            'type' => 'options_onoff',
+          ),
           'display' => array(
             'default' => array(
               'label' => 'hidden',
