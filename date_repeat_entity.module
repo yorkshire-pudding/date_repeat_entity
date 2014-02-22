@@ -30,14 +30,13 @@ function date_repeat_entity_menu() {
 }
 
 /**
- * Implements hook_form_alter().
+ * Implements hook_field_attach_form().
  */
-function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
+function date_repeat_entity_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
 
   // Check if the form is a node edit form.
   if (!empty($form['#node_edit_form'])) {
 
-    $entity_type = $form['#entity_type'];
     $bundle = $form['#bundle'];
 
     // Make sure utility functions are available.
@@ -50,16 +49,6 @@ function date_repeat_entity_form_alter(&$form, &$form_state, $form_id) {
     // function properly.
     $master_uuid_field = date_repeat_entity_get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_MASTER_UUID);
     $clone_state_field = date_repeat_entity_get_field($entity_type, $bundle, DATE_REPEAT_ENTITY_FIELD_CLONE_STATE);
-
-//    // Hide the master UUID from the edit form.
-//    if (isset($form[DATE_REPEAT_ENTITY_FIELD_MASTER_UUID])) {
-//      $form[DATE_REPEAT_ENTITY_FIELD_MASTER_UUID]['#access'] = FALSE;
-//    }
-//
-//    // Hide the clone state from the edit form.
-//    if (isset($form[DATE_REPEAT_ENTITY_FIELD_CLONE_STATE])) {
-//      $form[DATE_REPEAT_ENTITY_FIELD_CLONE_STATE]['#access'] = FALSE;
-//    }
 
     if ($repeating_date_field != NULL && $master_uuid_field != NULL && $clone_state_field != NULL) {
 
@@ -493,27 +482,31 @@ function date_repeat_entity_field_access($op, $field, $entity_type, $entity, $ac
 
   // Block access to the master uuid and clone state fields in both edit and
   // view operations.
-  if ($field['field_name'] == DATE_REPEAT_ENTITY_FIELD_MASTER_UUID) {
+  if ($field['field_name'] == DATE_REPEAT_ENTITY_FIELD_MASTER_UUID && !empty($entity)) {
     return FALSE;
   }
-  if ($field['field_name'] == DATE_REPEAT_ENTITY_FIELD_CLONE_STATE) {
+  if ($field['field_name'] == DATE_REPEAT_ENTITY_FIELD_CLONE_STATE && !empty($entity)) {
     return FALSE;
   }
   return TRUE;
 }
 
 /**
- * Creates base fields during module installation or when field instances are
+ * Creates base fields.
+ *
+ * This function used during module installation or when field instances are
  * being created for bundles and the base fields do not exist for some
  * particular reason.
  */
 function _date_repeat_entity_create_base_fields() {
 
-    // Create base fields, specific to this module.
+  // Create base fields, specific to this module.
   if (!field_info_field(DATE_REPEAT_ENTITY_FIELD_MASTER_UUID)) {
     $definition_master_uuid = array(
       'field_name' => DATE_REPEAT_ENTITY_FIELD_MASTER_UUID,
       'type' => 'text',
+      'locked' => TRUE,
+      'cardinality' => 1,
     );
     $field_master_uuid = field_create_field($definition_master_uuid);
   }
@@ -522,6 +515,25 @@ function _date_repeat_entity_create_base_fields() {
     $definition_clone_state = array(
       'field_name' => DATE_REPEAT_ENTITY_FIELD_CLONE_STATE,
       'type' => 'list_boolean',
+      'locked' => TRUE,
+      'cardinality' => 1,
+      'deleted' => 0,
+      'entity_types' => array(),
+      'foreign keys' => array(),
+      'indexes' => array(
+        'value' => array(
+          0 => 'value',
+        ),
+      ),
+      'module' => 'list',
+      'settings' => array(
+        'allowed_values' => array(
+          0 => '',
+          1 => '',
+        ),
+        'allowed_values_function' => '',
+      ),
+      'translatable' => 0,
     );
     $field_clone_state = field_create_field($definition_clone_state);
   }

@@ -20,8 +20,8 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
   // Get bundle type.
   $bundle = $wrapper->getBundle();
 
-  // Get value of clone state - a new date node will have the default state
-  // of FALSE while a cloned node will have a state of TRUE.
+  // Get value of clone state - a new date entity will have the default state
+  // of FALSE while a cloned entity will have a state of TRUE.
   $field_clone_state_value = $wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE}->value();
 
   // Clone the new entity and its attached fields using Replicate API
@@ -35,7 +35,8 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
     if ($repeating_date_field != NULL) {
       // Create a clone of the entity for each date instance in the series
       // except the first, which will be saved though the submit handler
-      // on the node edit form itself.
+      // on the entity edit form itself.
+      //
       // Get the UUID from the master (original) date.
       $master_uuid_value = $wrapper->uuid->value();
 
@@ -60,10 +61,10 @@ function date_repeat_entity_create_dates($entity, $entity_type) {
         // Clone entity.
         $clone_entity = replicate_clone_entity($entity_type, $entity);
 
-        // Get entity wrapper for the cloned node.
+        // Get entity wrapper for the cloned entity.
         $clone_wrapper = entity_metadata_wrapper($entity_type, $clone_entity);
 
-        // Flag the node as cloned.
+        // Flag the entity as cloned.
         $clone_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE} = TRUE;
 
         // Give the cloned entity a reference to the master UUID.

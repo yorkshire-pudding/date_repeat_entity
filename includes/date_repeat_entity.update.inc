@@ -13,7 +13,7 @@
  *   The entity being updated.
  *
  * @param string $entity_type
- *   the entity type to load, e.g. node.
+ *   the entity type to load
  */
 function date_repeat_entity_update_dates($entity, $entity_type) {
 
@@ -21,8 +21,8 @@ function date_repeat_entity_update_dates($entity, $entity_type) {
   $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
   $bundle = $entity_wrapper->getBundle();
 
-  // Get value of clone state - a new node will have the default state
-  // of FALSE while a cloned node will have a state of TRUE.
+  // Get value of clone state - a new entity will have the default state
+  // of FALSE while a cloned entity will have a state of TRUE.
   $field_clone_state_value = $entity_wrapper->{DATE_REPEAT_ENTITY_FIELD_CLONE_STATE}->value();
 
   // Only act on entities that are not clones or equivalent.

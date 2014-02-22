@@ -40,7 +40,7 @@ function date_repeat_entity_uninstall() {
   variable_del('date_repeat_entity_bundles_available');
 
   // Explicitly load module file (which will no longer be available
-  // at this stage.
+  // at this stage.  The module file is where field names are defined.
   drupal_load('module', 'date_repeat_entity');
 
   // Remove uuid field from application.

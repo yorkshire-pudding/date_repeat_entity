@@ -76,6 +76,7 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
       if (is_null($master_uuid_instance)) {
         $master_uuid_instance_definition = array(
           'field_name' => DATE_REPEAT_ENTITY_FIELD_MASTER_UUID,
+          'label' => 'Master UUID (do not change)',
           'entity_type' => 'node',
           'bundle' => $bundle,
           'default_value' => NULL,
@@ -93,6 +94,7 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
       if (is_null($clone_state_instance)) {
         $clone_state_instance_definition = array(
           'field_name' => DATE_REPEAT_ENTITY_FIELD_CLONE_STATE,
+          'label' => 'Clone state (do not change)',
           'entity_type' => 'node',
           'bundle' => $bundle,
           'default_value' => array(
@@ -101,7 +103,19 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
             ),
           ),
           'widget' => array(
+            'active' => 1,
+            'module' => 'options',
+            'settings' => array(
+              'display_label' => 0,
+            ),
             'type' => 'options_onoff',
+          ),
+          'settings' => array(
+            'allowed_values' => array(
+              0 => '',
+              1 => '',
+            ),
+            'allowed_values_function' => '',
           ),
           'display' => array(
             'default' => array(
@@ -111,7 +125,6 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
             ),
           ),
         );
-
         $new_clone_state_instance = field_create_instance($clone_state_instance_definition);
       }
     }
