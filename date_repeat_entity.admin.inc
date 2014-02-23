@@ -11,7 +11,7 @@
 function date_repeat_entity_admin_settings() {
   $form = array();
 
-  $form['#prefix'] = '<h2>Date Repeat Entity Administration</h2>';
+  $form['#prefix'] = '<h2>' . t('Date Repeat Entity Administration') . '</h2>';
 
   // Get node entity bundles.
   $bundles = node_type_get_names();
@@ -30,7 +30,7 @@ function date_repeat_entity_admin_settings() {
     '#type' => 'checkboxes',
     '#options' => $bundles,
     '#default_value' => variable_get('date_repeat_entity_bundles_available', $defaults),
-    '#description' => t("Select the bundles (content types) that date repeat entity should work with."),
+    '#description' => t('Select the bundles (content types) that date repeat entity should work with.'),
   );
 
   // Append custom submit handler.
