@@ -508,7 +508,7 @@ function _date_repeat_entity_create_base_fields() {
       'locked' => TRUE,
       'cardinality' => 1,
     );
-    $field_master_uuid = field_create_field($definition_master_uuid);
+    field_create_field($definition_master_uuid);
   }
 
   if (!field_info_field(DATE_REPEAT_ENTITY_FIELD_CLONE_STATE)) {
@@ -535,6 +535,6 @@ function _date_repeat_entity_create_base_fields() {
       ),
       'translatable' => 0,
     );
-    $field_clone_state = field_create_field($definition_clone_state);
+    field_create_field($definition_clone_state);
   }
 }

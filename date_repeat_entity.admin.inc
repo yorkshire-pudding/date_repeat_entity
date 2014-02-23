@@ -88,7 +88,7 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
             ),
           ),
         );
-        $new_master_uuid_instance = field_create_instance($master_uuid_instance_definition);
+        field_create_instance($master_uuid_instance_definition);
       }
 
       if (is_null($clone_state_instance)) {
@@ -125,7 +125,7 @@ function date_repeat_entity_admin_settings_submit($form, &$form_state) {
             ),
           ),
         );
-        $new_clone_state_instance = field_create_instance($clone_state_instance_definition);
+        field_create_instance($clone_state_instance_definition);
       }
     }
   }
