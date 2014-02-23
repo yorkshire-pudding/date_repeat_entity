@@ -41,7 +41,8 @@ The following modules must be installed and enabled for this module to work:
 
 * The module will create two additional fields for each enabled content type.
 
-* If necessary, add a date field to each content type.
+* If necessary, add a date field to each content type.  (Make sure the date
+  field is configured as a repeating date with an end date.)
 
 -- CUSTOMIZATION --
 
