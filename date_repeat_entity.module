@@ -98,7 +98,10 @@ function date_repeat_entity_field_attach_form($entity_type, $entity, &$form, &$f
  * Add a field set containing confirmation buttons to the top of a form.
  *
  * @param array $form
- *   The form object that is being built
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
  */
 function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
 
@@ -220,6 +223,12 @@ function date_repeat_entity_add_confirmation_buttons(&$form, $form_state) {
 
 /**
  * Submit handler for the 'submit' action (on existing nodes).
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
  */
 function date_repeat_entity_update_submit_handler($form, &$form_state) {
   date_repeat_entity_submit_handler($form, $form_state, 'update');
@@ -227,6 +236,12 @@ function date_repeat_entity_update_submit_handler($form, &$form_state) {
 
 /**
  * Submit handler for the 'delete' action.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
  */
 function date_repeat_entity_delete_submit_handler($form, &$form_state) {
   date_repeat_entity_submit_handler($form, $form_state, 'delete');
@@ -234,6 +249,15 @@ function date_repeat_entity_delete_submit_handler($form, &$form_state) {
 
 /**
  * Submit handler for the 'submit' and 'delete' actions.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
+ *
+ * @param string $action
+ *   the action to be carried out
  */
 function date_repeat_entity_submit_handler($form, &$form_state, $action) {
 
@@ -251,6 +275,12 @@ function date_repeat_entity_submit_handler($form, &$form_state, $action) {
 
 /**
  * Submit handler for the 'preview' action.
+ *
+ * @param array $form
+ *   represents the form and its underlying data schema
+ *
+ * @param array $form_state
+ *   represents the current state of the form
  */
 function date_repeat_entity_preview_handler($form, &$form_state) {
 
@@ -396,8 +426,8 @@ function date_repeat_entity_entity_presave($entity, $entity_type) {
  * @param array $form_state
  *   represents the current state of the form
  *
- * returns array
- *   Array contains the number of referenced entities and the label for
+ * @return array
+ *   Array containing the number of referenced entities and the label for
  *   each entity reference field that has values.
  */
 function date_repeat_entity_get_referenced_entities($form, $form_state) {

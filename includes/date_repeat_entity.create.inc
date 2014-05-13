@@ -8,6 +8,12 @@
 
 /**
  * Clones new entities that are part of a repeating date series.
+ *
+ * @param object $entity
+ *   The entity being created
+ *
+ * @param string $entity_type
+ *   the entity type to load
  */
 function date_repeat_entity_create_dates($entity, $entity_type) {
 
