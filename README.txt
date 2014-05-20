@@ -17,8 +17,8 @@ the new series.  In this case the module provides a warning to the user if
 referenced entities, associated with the current date entity, may be affected.
 
 Note: The module includes code that specifically targets 'node' entities.
-However, many of the functions have written generically so that they will work
-with other entity types.
+However, many of the functions have been written generically so that they
+will work with other entity types.
 
 -- REQUIREMENTS --
 
