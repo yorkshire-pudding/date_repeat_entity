@@ -265,17 +265,11 @@ function date_repeat_entity_repeating_date_update($date_entity, $updated_entity,
  *   The entity type to load, e.g. node.
  * @param string $bundle
  *   The bundle type, e.g. event.
- * @param string $scope
- *   Defines the extent to which date series should be searched.
- *   Can be one of:
- *     current (for the current date instance only),
- *     future (for the current and all future date instances),
- *     all (all instances of a date series).
  *
  * @return array
  *   NULL if the repeating date has not changed.
  */
-function _date_repeat_entity_get_updated_dates($form_state, $entity_id, $entity_type, $bundle, $scope = 'all') {
+function _date_repeat_entity_get_updated_dates($form_state, $entity_id, $entity_type, $bundle) {
 
   $new_dates = array();
 
